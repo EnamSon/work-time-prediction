@@ -1,0 +1,17 @@
+[project]
+name = "work-time-prediction"
+version = "0.1.0"
+description = "Prediction of arrival and departure times of MINDDEVEL Cameroon employees."
+authors = [
+    {name = "EnamSon",email = "junior.enama@facsciences-uy1.cm"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
