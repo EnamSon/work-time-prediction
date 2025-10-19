@@ -8,8 +8,8 @@ class PredictedDay(BaseModel):
     Définit la structure de données pour un jour prédit ou historique.
     """
     date: str
-    first_punch: str
-    last_punch: str
+    start_time: str
+    end_time: str
     historical: bool
 
 class PredictionResponse(BaseModel):

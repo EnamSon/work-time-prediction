@@ -11,8 +11,8 @@ router = APIRouter()
 async def required_columns_mapping(request: RequiredColumnsMappingRequest):
     required_columns.id = request.id
     required_columns.date = request.date
-    required_columns.start = request.start
-    required_columns.end = request.end
+    required_columns.start = request.start_time
+    required_columns.end = request.end_time
 
     return {
         "detail": "success"

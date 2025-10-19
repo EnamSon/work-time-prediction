@@ -24,8 +24,8 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": "10/10/2025",
-                "first_punch": "08:15",
-                "last_punch": "16:45",
+                "start_time": "08:15",
+                "end_time": "16:45",
                 "historical": False
             }
         ]
@@ -47,8 +47,8 @@ class TestPredictEndpoint:
         response_data = response.json()
         assert "predictions" in response_data
         assert len(response_data["predictions"]) == 1
-        assert response_data["predictions"][0]["first_punch"] == "08:15"
-        assert response_data["predictions"][0]["last_punch"] == "16:45"
+        assert response_data["predictions"][0]["start_time"] == "08:15"
+        assert response_data["predictions"][0]["end_time"] == "16:45"
         assert response_data["predictions"][0]["historical"] is False
     
     @patch('work_time_prediction.api.predict.generate_predictions')
@@ -57,20 +57,20 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": "09/10/2025",
-                "first_punch": "08:00",
-                "last_punch": "17:00",
+                "start_time": "08:00",
+                "end_time": "17:00",
                 "historical": True
             },
             {
                 "date": "10/10/2025",
-                "first_punch": "08:15",
-                "last_punch": "16:45",
+                "start_time": "08:15",
+                "end_time": "16:45",
                 "historical": False
             },
             {
                 "date": "11/10/2025",
-                "first_punch": "08:10",
-                "last_punch": "17:10",
+                "start_time": "08:10",
+                "end_time": "17:10",
                 "historical": False
             }
         ]
@@ -194,8 +194,8 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": "10/10/2025",
-                "first_punch": "08:00",
-                "last_punch": "17:00",
+                "start_time": "08:00",
+                "end_time": "17:00",
                 "historical": False
             }
         ]
@@ -220,8 +220,8 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": f"{i:02d}/10/2025",
-                "first_punch": "08:00",
-                "last_punch": "17:00",
+                "start_time": "08:00",
+                "end_time": "17:00",
                 "historical": False
             }
             for i in range(1, 32)
@@ -249,14 +249,14 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": "05/10/2025",
-                "first_punch": "08:00",
-                "last_punch": "17:00",
+                "start_time": "08:00",
+                "end_time": "17:00",
                 "historical": True
             },
             {
                 "date": "06/10/2025",
-                "first_punch": "08:05",
-                "last_punch": "17:05",
+                "start_time": "08:05",
+                "end_time": "17:05",
                 "historical": True
             }
         ]
@@ -284,8 +284,8 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": "10/10/2025",
-                "first_punch": "08:00",
-                "last_punch": "17:00",
+                "start_time": "08:00",
+                "end_time": "17:00",
                 "historical": False
             }
         ]
@@ -312,14 +312,14 @@ class TestPredictEndpoint:
         
         prediction = data["predictions"][0]
         assert "date" in prediction
-        assert "first_punch" in prediction
-        assert "last_punch" in prediction
+        assert "start_time" in prediction
+        assert "end_time" in prediction
         assert "historical" in prediction
         
         # Vérifier les types
         assert isinstance(prediction["date"], str)
-        assert isinstance(prediction["first_punch"], str)
-        assert isinstance(prediction["last_punch"], str)
+        assert isinstance(prediction["start_time"], str)
+        assert isinstance(prediction["end_time"], str)
         assert isinstance(prediction["historical"], bool)
     
     @patch('work_time_prediction.api.predict.generate_predictions')
@@ -378,14 +378,14 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": "12/10/2025",  # Samedi
-                "first_punch": "09:00",
-                "last_punch": "13:00",
+                "start_time": "09:00",
+                "end_time": "13:00",
                 "historical": False
             },
             {
                 "date": "13/10/2025",  # Dimanche
-                "first_punch": "10:00",
-                "last_punch": "14:00",
+                "start_time": "10:00",
+                "end_time": "14:00",
                 "historical": False
             }
         ]
@@ -412,8 +412,8 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": "01/01/2024",
-                "first_punch": "08:00",
-                "last_punch": "17:00",
+                "start_time": "08:00",
+                "end_time": "17:00",
                 "historical": True
             }
         ]
@@ -440,8 +440,8 @@ class TestPredictEndpoint:
         mock_raw_data = [
             {
                 "date": "01/01/2026",
-                "first_punch": "08:00",
-                "last_punch": "17:00",
+                "start_time": "08:00",
+                "end_time": "17:00",
                 "historical": False
             }
         ]
@@ -469,8 +469,8 @@ class TestPredictEndpoint:
         mock_generate.return_value = [
             {
                 "date": "10/10/2025",
-                "first_punch": "08:00",
-                "last_punch": "17:00",
+                "start_time": "08:00",
+                "end_time": "17:00",
                 "historical": False
             }
         ]
@@ -491,8 +491,8 @@ class TestPredictEndpoint:
         mock_generate.return_value = [
             {
                 "date": "10/10/2025",
-                "first_punch": "09:00",
-                "last_punch": "18:00",
+                "start_time": "09:00",
+                "end_time": "18:00",
                 "historical": False
             }
         ]
@@ -517,11 +517,11 @@ class TestPredictEndpoint:
         """Vérifie que la fenêtre est bien centrée autour de la date cible."""
         # Window de 5 jours = 2 jours avant + cible + 2 jours après
         mock_raw_data = [
-            {"date": "08/10/2025", "first_punch": "08:00", "last_punch": "17:00", "historical": False},
-            {"date": "09/10/2025", "first_punch": "08:00", "last_punch": "17:00", "historical": False},
-            {"date": "10/10/2025", "first_punch": "08:00", "last_punch": "17:00", "historical": False},
-            {"date": "11/10/2025", "first_punch": "08:00", "last_punch": "17:00", "historical": False},
-            {"date": "12/10/2025", "first_punch": "08:00", "last_punch": "17:00", "historical": False}
+            {"date": "08/10/2025", "start_time": "08:00", "end_time": "17:00", "historical": False},
+            {"date": "09/10/2025", "start_time": "08:00", "end_time": "17:00", "historical": False},
+            {"date": "10/10/2025", "start_time": "08:00", "end_time": "17:00", "historical": False},
+            {"date": "11/10/2025", "start_time": "08:00", "end_time": "17:00", "historical": False},
+            {"date": "12/10/2025", "start_time": "08:00", "end_time": "17:00", "historical": False}
         ]
         mock_generate.return_value = mock_raw_data
         

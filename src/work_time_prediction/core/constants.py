@@ -87,7 +87,7 @@ ENV_FILE = APP_ROOT_DIR / ".env"
 # FEATURES ML (Colonnes utilisées pour l'entraînement)
 # ============================================================================
 
-FEATURES = ['Employee_ID_Encoded', 'Day_of_Week', 'Day_of_Year']
+FEATURES = [DFCols.ID_ENCODED, DFCols.DAY_OF_WEEK, DFCols.DAY_OF_YEAR]
 
 # ============================================================================
 # QUOTAS PAR DÉFAUT

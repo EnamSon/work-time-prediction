@@ -12,7 +12,7 @@ from work_time_prediction.core.database import (
     get_db_connection
 )
 from work_time_prediction.core.exceptions import InvalidCsvFormatError
-from work_time_prediction.core.constants import DB_FILE, TABLE_NAME
+from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DFCols, DF_COLS
 
 # Données CSV de simulation brutes (format standard)
 MOCK_CSV_CONTENT = """Employee ID,Date,Day of Week,First Punch,Last Punch,Hours,Minutes,Total Minutes,Task
@@ -38,11 +38,11 @@ def test_load_data_from_csv_success():
     
     assert not df.empty
     assert len(df) == 4
-    assert list(df.columns) == ['Employee_ID', 'Date', 'first_punch_min', 'last_punch_min']
+    assert list(df.columns) == DF_COLS
     
     # Vérification des conversions de temps
-    assert df.iloc[0]['first_punch_min'] == 540.0
-    assert df.iloc[0]['last_punch_min'] == 1020.0
+    assert df.iloc[0][DFCols.START_TIME_BY_MINUTES] == 540.0
+    assert df.iloc[0][DFCols.END_TIME_BY_MINUTES] == 1020.0
 
 def test_load_data_from_csv_invalid_format():
     """Teste la gestion d'un CSV avec un format de colonnes insuffisant."""
@@ -92,5 +92,5 @@ def test_save_and_get_data_flow(temp_db_path, monkeypatch):
     assert len(df_retrieved) == 4
     
     # Le premier jour (01/01/2023) était un dimanche (6)
-    assert df_retrieved.iloc[0]['Day_of_Week'] == 6
-    assert df_retrieved.iloc[0]['Day_of_Year'] == 1
+    assert df_retrieved.iloc[0][DFCols.DAY_OF_WEEK] == 6
+    assert df_retrieved.iloc[0][DFCols.DAY_OF_YEAR] == 1

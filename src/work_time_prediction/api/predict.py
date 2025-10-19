@@ -59,7 +59,7 @@ async def get_predictions(request: PredictionRequest):
         all_dates = _calculate_date_range(target_date, request.window_size)
 
         # Génération des résultats (Historique + Prédictions)
-        raw_results = generate_predictions(request.employee_id, all_dates)
+        raw_results = generate_predictions(request.id, all_dates)
 
         # Construction des objets PredictedDay pour Pydantic
         predictions = [PredictedDay(**data) for data in raw_results]
@@ -72,6 +72,11 @@ async def get_predictions(request: PredictionRequest):
     except EmployeeNotFoundError as e:
         raise HTTPException(status_code=404, detail=e.message)
     
+    except ValueError:
+        raise HTTPException(
+            status_code=400, 
+            detail="Format de date cible invalide. Utilisez jj/mm/aaaa."
+        )
     
     except Exception as e:
         raise HTTPException(

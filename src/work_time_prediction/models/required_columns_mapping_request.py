@@ -8,5 +8,5 @@ class RequiredColumnsMappingRequest(BaseModel):
     """
     id: str
     date: str
-    start: str
-    end: str
+    start_time: str
+    end_time: str

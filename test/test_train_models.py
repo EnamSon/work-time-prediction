@@ -52,12 +52,12 @@ class TestTrainModels:
         # Vérifications
         assert data_points == 5
         assert ml_state.is_trained is True
-        assert ml_state.model_arrival is not None
-        assert ml_state.model_departure is not None
-        assert len(ml_state.employee_id_map) == 3
-        assert 'E001' in ml_state.employee_id_map
-        assert 'E002' in ml_state.employee_id_map
-        assert 'E003' in ml_state.employee_id_map
+        assert ml_state.model_start_time is not None
+        assert ml_state.model_end_time is not None
+        assert len(ml_state.id_map) == 3
+        assert 'E001' in ml_state.id_map
+        assert 'E002' in ml_state.id_map
+        assert 'E003' in ml_state.id_map
     
     @patch('work_time_prediction.core.train_models.get_all_data')
     def test_train_models_empty_dataframe(self, mock_get_data):
@@ -78,13 +78,13 @@ class TestTrainModels:
         train_models()
         
         # Vérifier que chaque employé a un ID encodé unique
-        encoded_ids = set(ml_state.employee_id_map.values())
+        encoded_ids = set(ml_state.id_map.values())
         assert len(encoded_ids) == 3
         
         # Vérifier que les 3 IDs attendus sont présents
-        assert 'E001' in ml_state.employee_id_map
-        assert 'E002' in ml_state.employee_id_map
-        assert 'E003' in ml_state.employee_id_map
+        assert 'E001' in ml_state.id_map
+        assert 'E002' in ml_state.id_map
+        assert 'E003' in ml_state.id_map
     
     @patch('work_time_prediction.core.train_models.get_all_data')
     def test_train_models_model_types(self, mock_get_data, sample_training_data):
@@ -94,10 +94,10 @@ class TestTrainModels:
         train_models()
         
         # Vérifier que les modèles ont une méthode predict
-        assert hasattr(ml_state.model_arrival, 'predict')
-        assert hasattr(ml_state.model_departure, 'predict')
-        assert callable(ml_state.model_arrival.predict)
-        assert callable(ml_state.model_departure.predict)
+        assert hasattr(ml_state.model_start_time, 'predict')
+        assert hasattr(ml_state.model_end_time, 'predict')
+        assert callable(ml_state.model_start_time.predict)
+        assert callable(ml_state.model_end_time.predict)
     
     @patch('work_time_prediction.core.train_models.get_all_data')
     def test_train_models_multiple_times(self, mock_get_data, sample_training_data):
@@ -106,11 +106,11 @@ class TestTrainModels:
         
         # Premier entraînement
         data_points_1 = train_models()
-        model_1_id = id(ml_state.model_arrival)
+        model_1_id = id(ml_state.model_start_time)
         
         # Deuxième entraînement
         data_points_2 = train_models()
-        model_2_id = id(ml_state.model_arrival)
+        model_2_id = id(ml_state.model_start_time)
         
         assert data_points_1 == data_points_2
         assert ml_state.is_trained is True
@@ -133,8 +133,8 @@ class TestTrainModels:
         data_points = train_models()
         
         assert data_points == 3
-        assert len(ml_state.employee_id_map) == 1
-        assert 'E001' in ml_state.employee_id_map
+        assert len(ml_state.id_map) == 1
+        assert 'E001' in ml_state.id_map
     
     @patch('work_time_prediction.core.train_models.get_all_data')
     def test_train_models_many_employees(self, mock_get_data):
@@ -152,7 +152,7 @@ class TestTrainModels:
         data_points = train_models()
         
         assert data_points == 200
-        assert len(ml_state.employee_id_map) == 100
+        assert len(ml_state.id_map) == 100
     
     @patch('work_time_prediction.core.train_models.get_all_data')
     def test_train_models_encoder_consistency(self, mock_get_data, sample_training_data):
@@ -163,8 +163,8 @@ class TestTrainModels:
         
         # Vérifier que l'encodeur peut transformer les IDs connus
         known_ids = ['E001', 'E002', 'E003']
-        encoded = ml_state.employee_encoder.transform(known_ids)
+        encoded = ml_state.id_encoder.transform(known_ids)
         
         assert len(encoded) == 3
-        assert all(ml_state.employee_id_map[emp_id] == encoded[i] 
+        assert all(ml_state.id_map[emp_id] == encoded[i] 
                    for i, emp_id in enumerate(known_ids))

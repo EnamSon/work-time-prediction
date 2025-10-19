@@ -26,15 +26,15 @@ def train_models() -> int:
 
     # 1. Encodage de l'ID Employé
     all_employee_ids = df[DFCols.ID].unique()
-    ml_state.employee_encoder.fit(all_employee_ids)
-    df[DFCols.ID_ENCODED] = ml_state.employee_encoder.transform(df[DFCols.ID])
+    ml_state.id_encoder.fit(all_employee_ids)
+    df[DFCols.ID_ENCODED] = ml_state.id_encoder.transform(df[DFCols.ID])
     
     # 2. Mise à jour du mapping global
-    ml_state.employee_id_map = {
+    ml_state.id_map = {
         real_id: encoded_id
         for real_id, encoded_id in zip(
             all_employee_ids, 
-            ml_state.employee_encoder.transform(all_employee_ids)
+            ml_state.id_encoder.transform(all_employee_ids)
         )
     }
     
@@ -42,23 +42,23 @@ def train_models() -> int:
     
     # 3. Modèle pour l'heure d'arrivée
     y_arrival = df[DFCols.START_TIME_BY_MINUTES]
-    ml_state.model_arrival = RandomForestRegressor(
+    ml_state.model_start_time = RandomForestRegressor(
         n_estimators=100, 
         random_state=42, 
         n_jobs=-1, 
         max_depth=10
     )
-    ml_state.model_arrival.fit(X, y_arrival)
+    ml_state.model_start_time.fit(X, y_arrival)
 
     # 4. Modèle pour l'heure de départ
     y_departure = df[DFCols.END_TIME_BY_MINUTES]
-    ml_state.model_departure = RandomForestRegressor(
+    ml_state.model_end_time = RandomForestRegressor(
         n_estimators=100, 
         random_state=42, 
         n_jobs=-1, 
         max_depth=10
     )
-    ml_state.model_departure.fit(X, y_departure)
+    ml_state.model_end_time.fit(X, y_departure)
     
     ml_state.is_trained = True
     
