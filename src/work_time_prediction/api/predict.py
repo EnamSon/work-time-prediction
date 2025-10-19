@@ -72,11 +72,6 @@ async def get_predictions(request: PredictionRequest):
     except EmployeeNotFoundError as e:
         raise HTTPException(status_code=404, detail=e.message)
     
-    except ValueError:
-        raise HTTPException(
-            status_code=400, 
-            detail="Format de date cible invalide. Utilisez jj/mm/aaaa."
-        )
     
     except Exception as e:
         raise HTTPException(

@@ -7,9 +7,18 @@ from pathlib import Path
 DB_NAME = "work_time_data.db"
 TABLE_NAME = "schedule_data"
 
+# Colonnes du DataFrame
+class DFCols:
+    ID = "Employee_ID"
+    ID_ENCODED = "Employee_ID_Encoded"
+    DATE = "Date"
+    START_TIME_BY_MINUTES = "first_punch_min"
+    END_TIME_BY_MINUTES = "last_punch_min"
+    DAY_OF_YEAR = "Day_of_Year"
+    DAY_OF_WEEK = "Day_of_Week"
+
 # Colonnes du DataFrame après prétraitement
-DF_COLS = ['Employee_ID', 'Date', 'first_punch_min', 'last_punch_min']
-#DF_COLS = ['ID', 'DATE', 'START_TIME_BY_MINUTES', 'END_TIME_BY_MINUTES']
+DF_COLS = [DFCols.ID, DFCols.DATE, DFCols.START_TIME_BY_MINUTES, DFCols.END_TIME_BY_MINUTES]
 
 # ============================================================================
 # APPLICATION

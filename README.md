@@ -62,7 +62,7 @@ poetry run uvicorn work_time_prediction.main:app --app-dir src
     curl -X POST "http://127.0.0.1:8000/api/required_columns_mapping/" \
         -H "accept: application/json" \
         -H "Content-Type: application/json" \
-        -d '{"id": "Employee ID", "start": "First Punch", "end": "Last Punch"}'
+        -d '{"id": "Employee ID", "date": "Date", "start": "First Punch", "end": "Last Punch"}'
     ```
 
 ---

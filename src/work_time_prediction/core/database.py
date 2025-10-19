@@ -6,7 +6,7 @@ import io
 # Importation de l'exception spécifique pour la base de données
 from sqlite3 import OperationalError 
 
-from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DF_COLS
+from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DF_COLS, DFCols
 from work_time_prediction.core.utils.time_converter import time_to_minutes
 from work_time_prediction.core.exceptions import InvalidCsvFormatError
 from work_time_prediction.core.required_columns import required_columns
@@ -44,17 +44,17 @@ def load_data_from_csv(csv_data: io.StringIO) -> pd.DataFrame:
             )
 
         # Conversion clé : Assurer que l'ID est une chaîne de caractères (plus générique)
-        df['Employee_ID'] = df[required_columns_clean.id].astype(str)
+        df[DFCols.ID] = df[required_columns_clean.id].astype(str)
 
         # Ingestion de données brutes pour le nettoyage
-        df['first_punch_min'] = df[required_columns_clean.start].apply(time_to_minutes)
-        df['last_punch_min'] = df[required_columns_clean.end].apply(time_to_minutes)
-        df['Date'] = pd.to_datetime(df[required_columns_clean.date], format='%d/%m/%Y', errors='coerce')
+        df[DFCols.START_TIME_BY_MINUTES] = df[required_columns_clean.start].apply(time_to_minutes)
+        df[DFCols.END_TIME_BY_MINUTES] = df[required_columns_clean.end].apply(time_to_minutes)
+        df[DFCols.DATE] = pd.to_datetime(df[required_columns_clean.date], format='%d/%m/%Y', errors='coerce')
 
         # Nettoyage et filtrage
-        df.dropna(subset=['Date', 'Employee_ID'], inplace=True)
-        df = df[(df['first_punch_min'] > 0) & (df['last_punch_min'] > 0)]
-        df = df[df['last_punch_min'] > df['first_punch_min']]
+        df.dropna(subset=[DFCols.DATE, DFCols.ID], inplace=True)
+        df = df[(df[DFCols.START_TIME_BY_MINUTES] > 0) & (df[DFCols.END_TIME_BY_MINUTES] > 0)]
+        df = df[df[DFCols.END_TIME_BY_MINUTES] > df[DFCols.START_TIME_BY_MINUTES]]
 
         return df[DF_COLS]
 
@@ -75,10 +75,10 @@ def get_all_data() -> pd.DataFrame:
     """Récupère toutes les données de la base de données."""
     conn = get_db_connection()
     try:
-        df = pd.read_sql_query(f"SELECT * FROM {TABLE_NAME}", conn, parse_dates=['Date'])
+        df = pd.read_sql_query(f"SELECT * FROM {TABLE_NAME}", conn, parse_dates=[DFCols.DATE])
         # Re-ajouter les colonnes Day_of_Week et Day_of_Year pour l'entraînement
-        df['Day_of_Year'] = df['Date'].dt.dayofyear
-        df['Day_of_Week'] = df['Date'].dt.dayofweek
+        df[DFCols.DAY_OF_YEAR] = df[DFCols.DATE].dt.dayofyear
+        df[DFCols.DAY_OF_WEEK] = df[DFCols.DATE].dt.dayofweek
         return df
     except (OperationalError, pd.errors.DatabaseError):
         # La table n'existe pas encore

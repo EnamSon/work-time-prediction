@@ -3,7 +3,7 @@
 
 from sklearn.ensemble import RandomForestRegressor  # type: ignore
 
-from work_time_prediction.core.constants import FEATURES
+from work_time_prediction.core.constants import FEATURES, DFCols
 from work_time_prediction.core.database import get_all_data
 from work_time_prediction.core.ml_state import ml_state
 from work_time_prediction.core.exceptions import NoDataFoundError
@@ -25,9 +25,9 @@ def train_models() -> int:
         )
 
     # 1. Encodage de l'ID Employé
-    all_employee_ids = df['Employee_ID'].unique()
+    all_employee_ids = df[DFCols.ID].unique()
     ml_state.employee_encoder.fit(all_employee_ids)
-    df['Employee_ID_Encoded'] = ml_state.employee_encoder.transform(df['Employee_ID'])
+    df[DFCols.ID_ENCODED] = ml_state.employee_encoder.transform(df[DFCols.ID])
     
     # 2. Mise à jour du mapping global
     ml_state.employee_id_map = {
@@ -41,7 +41,7 @@ def train_models() -> int:
     X = df[FEATURES]
     
     # 3. Modèle pour l'heure d'arrivée
-    y_arrival = df['first_punch_min']
+    y_arrival = df[DFCols.START_TIME_BY_MINUTES]
     ml_state.model_arrival = RandomForestRegressor(
         n_estimators=100, 
         random_state=42, 
@@ -51,7 +51,7 @@ def train_models() -> int:
     ml_state.model_arrival.fit(X, y_arrival)
 
     # 4. Modèle pour l'heure de départ
-    y_departure = df['last_punch_min']
+    y_departure = df[DFCols.END_TIME_BY_MINUTES]
     ml_state.model_departure = RandomForestRegressor(
         n_estimators=100, 
         random_state=42, 
