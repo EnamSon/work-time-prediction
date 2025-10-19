@@ -50,10 +50,10 @@ poetry run uvicorn work_time_prediction.main:app --app-dir src
 - POST /api/predict: get predictions
 
     ```bash
-        curl -X POST "http://127.0.0.1:8000/api/predict/" \
-            -H "accept: application/json" \
-            -H "Content-Type: application/json" \
-            -d '{"id": "1", "target_date": "25/12/2025"}'
+    curl -X POST "http://127.0.0.1:8000/api/predict/" \
+        -H "accept: application/json" \
+        -H "Content-Type: application/json" \
+        -d '{"id": "1", "target_date": "25/12/2025"}'
     ```
 
 - POST /api/required_columns_mapping/: make a required columns mapping before train model
