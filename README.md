@@ -20,7 +20,6 @@ Use at your own risk, and expect frequent change.
 ```bash
 git clone https://github.com/EnamSon/work-time-prediction.git
 cd work-time-prediction
-poetry install
 ```
 
 ---
@@ -37,7 +36,7 @@ poetry run uvicorn work_time_prediction.main:app --app-dir src
 - GET /api/: status check
 
     ```bash
-    curl "http://127.0.0.1:8000/api"
+    curl "http://127.0.0.1:8000/api/"
     ```
 
 - POST /api/train: upload csv, store datas in sqlite database, train model

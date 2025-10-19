@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from work_time_prediction.api import router
+from work_time_prediction.core.utils.folder_manager import ensure_directories_exist
+
+# Initialisation du répertoire de travail
+ensure_directories_exist()
 
 # Initialisation de l'application FastAPI
 app = FastAPI(

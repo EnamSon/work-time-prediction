@@ -6,8 +6,8 @@ import io
 # Importation de l'exception spécifique pour la base de données
 from sqlite3 import OperationalError 
 
-from work_time_prediction.core.constants import DB_NAME, TABLE_NAME, DF_COLS, REQUIRED_COLUMNS_RAW
-from work_time_prediction.core.utils import time_to_minutes
+from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DF_COLS, REQUIRED_COLUMNS_RAW
+from work_time_prediction.core.utils.time_converter import time_to_minutes
 from work_time_prediction.core.exceptions import InvalidCsvFormatError
 
 # --- Fonctions de Base de Données ---
@@ -15,7 +15,7 @@ from work_time_prediction.core.exceptions import InvalidCsvFormatError
 def get_db_connection():
     """Crée et retourne une connexion SQLite (ici, en mémoire pour la simplicité du PoC)."""
     # Pour un déploiement réel, vous utiliseriez un chemin de fichier pour DB_NAME
-    conn = sqlite3.connect(DB_NAME) 
+    conn = sqlite3.connect(DB_FILE)
     return conn
 
 def load_data_from_csv(csv_data: io.StringIO) -> pd.DataFrame:

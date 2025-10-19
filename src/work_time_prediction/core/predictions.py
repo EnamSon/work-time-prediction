@@ -6,7 +6,7 @@ from datetime import datetime
 
 from work_time_prediction.core.constants import FEATURES
 from work_time_prediction.core.database import get_all_data
-from work_time_prediction.core.utils import minutes_to_time
+from work_time_prediction.core.utils.time_converter import minutes_to_time
 from work_time_prediction.core.exceptions import ModelNotTrainedError, EmployeeNotFoundError
 from work_time_prediction.core.ml_state import ml_state
 
