@@ -6,9 +6,10 @@ import io
 # Importation de l'exception spécifique pour la base de données
 from sqlite3 import OperationalError 
 
-from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DF_COLS, REQUIRED_COLUMNS_RAW
+from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DF_COLS
 from work_time_prediction.core.utils.time_converter import time_to_minutes
 from work_time_prediction.core.exceptions import InvalidCsvFormatError
+from work_time_prediction.core.required_columns import required_columns
 
 # --- Fonctions de Base de Données ---
 
@@ -32,10 +33,10 @@ def load_data_from_csv(csv_data: io.StringIO) -> pd.DataFrame:
         df.columns = [col.strip().replace(' ', '_') for col in df.columns]
 
         # Noms des colonnes requises après le nettoyage
-        required_columns_clean = [col.replace(' ', '_') for col in REQUIRED_COLUMNS_RAW]
+        required_columns_clean = required_columns.clean()
     
         # Vérification des colonnes requises
-        missing_cols = [col for col in required_columns_clean if col not in df.columns]
+        missing_cols = [col for col in vars(required_columns_clean).values() if col not in df.columns]
         
         if missing_cols:
             raise InvalidCsvFormatError(
@@ -43,12 +44,12 @@ def load_data_from_csv(csv_data: io.StringIO) -> pd.DataFrame:
             )
 
         # Conversion clé : Assurer que l'ID est une chaîne de caractères (plus générique)
-        df['Employee_ID'] = df['Employee_ID'].astype(str)
+        df['Employee_ID'] = df[required_columns_clean.id].astype(str)
 
         # Ingestion de données brutes pour le nettoyage
-        df['first_punch_min'] = df['First_Punch'].apply(time_to_minutes)
-        df['last_punch_min'] = df['Last_Punch'].apply(time_to_minutes)
-        df['Date'] = pd.to_datetime(df['Date'], format='%d/%m/%Y', errors='coerce')
+        df['first_punch_min'] = df[required_columns_clean.start].apply(time_to_minutes)
+        df['last_punch_min'] = df[required_columns_clean.end].apply(time_to_minutes)
+        df['Date'] = pd.to_datetime(df[required_columns_clean.date], format='%d/%m/%Y', errors='coerce')
 
         # Nettoyage et filtrage
         df.dropna(subset=['Date', 'Employee_ID'], inplace=True)

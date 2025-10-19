@@ -9,13 +9,14 @@ TABLE_NAME = "schedule_data"
 
 # Colonnes du DataFrame après prétraitement
 DF_COLS = ['Employee_ID', 'Date', 'first_punch_min', 'last_punch_min']
+#DF_COLS = ['ID', 'DATE', 'START_TIME_BY_MINUTES', 'END_TIME_BY_MINUTES']
 
 # ============================================================================
 # APPLICATION
 # ============================================================================
 
 APP_NAME = "work_time_prediction"
-APP_VERSION = "2.0.0"
+APP_VERSION = "1.0.0"
 
 # ============================================================================
 # CHEMINS DE BASE
@@ -78,21 +79,6 @@ ENV_FILE = APP_ROOT_DIR / ".env"
 # ============================================================================
 
 FEATURES = ['Employee_ID_Encoded', 'Day_of_Week', 'Day_of_Year']
-
-# ============================================================================
-# NOMS DE COLONNES PAR DÉFAUT
-# ============================================================================
-
-DEFAULT_COLUMN_NAMES = {
-    "employee_id": "Employee ID",
-    "date": "Date",
-    "first_punch": "First Punch",
-    "last_punch": "Last Punch",
-    "day_of_week": "Day of Week"
-}
-
-# Colonnes requises pour l'entraînement
-REQUIRED_COLUMNS_RAW = ['Employee ID', 'Date', 'First Punch', 'Last Punch']
 
 # ============================================================================
 # QUOTAS PAR DÉFAUT
