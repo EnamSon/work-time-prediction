@@ -28,9 +28,6 @@ def load_data_from_csv(csv_data: io.StringIO) -> pd.DataFrame:
         except Exception:
             csv_data.seek(0)
             df = pd.read_csv(csv_data, sep=';')
-            
-        if df.empty or len(df.columns) < 9:
-             raise InvalidCsvFormatError("Le fichier CSV est vide ou le format est incorrect (moins de 9 colonnes).")
 
         df.columns = [col.strip().replace(' ', '_') for col in df.columns]
 

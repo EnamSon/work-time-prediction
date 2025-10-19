@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from work_time_prediction.core.api import router
-import uvicorn
+from work_time_prediction.api import router
 
 # Initialisation de l'application FastAPI
 app = FastAPI(
