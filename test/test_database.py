@@ -12,7 +12,7 @@ from work_time_prediction.core.database import (
     get_db_connection
 )
 from work_time_prediction.core.exceptions import InvalidCsvFormatError
-from work_time_prediction.core.constants import DB_NAME, TABLE_NAME
+from work_time_prediction.core.constants import DB_FILE, TABLE_NAME
 
 # Données CSV de simulation brutes (format standard)
 MOCK_CSV_CONTENT = """Employee ID,Date,Day of Week,First Punch,Last Punch,Hours,Minutes,Total Minutes,Task
@@ -60,7 +60,7 @@ def test_load_data_from_csv_empty():
         
 # --- Tests de save_data_to_db et get_all_data ---
 
-@patch('work_time_prediction.core.database.DB_NAME', new=':memory:')
+@patch('work_time_prediction.core.database.DB_FILE', new=':memory:')
 def test_get_all_data_empty_db():
     """Teste la récupération quand la table n'existe pas encore (nouvelle DB en mémoire)."""
     # Le patch ':memory:' ici est suffisant pour isoler ce test
@@ -74,7 +74,7 @@ def test_save_and_get_data_flow(temp_db_path, monkeypatch):
     """Teste le flux complet: chargement, sauvegarde et récupération en utilisant un fichier temporaire."""
     
     # 1. Patch de la constante DB_NAME dans le module database
-    monkeypatch.setattr('work_time_prediction.core.database.DB_NAME', temp_db_path)
+    monkeypatch.setattr('work_time_prediction.core.database.DB_FILE', temp_db_path)
     
     csv_data = io.StringIO(MOCK_CSV_CONTENT)
     df_processed = load_data_from_csv(csv_data)
