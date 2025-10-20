@@ -69,7 +69,7 @@ poetry run uvicorn work_time_prediction.main:app --app-dir src
 
 ## Docs
 
-Read documentation at http://localhost:8000/docs
+Read documentation at http://127.0.0.1:8000/docs
 
 ---
 
