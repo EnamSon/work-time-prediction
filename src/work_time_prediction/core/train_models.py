@@ -5,11 +5,11 @@ from sklearn.ensemble import RandomForestRegressor  # type: ignore
 
 from work_time_prediction.core.constants import FEATURES, DFCols
 from work_time_prediction.core.database import get_all_data
-from work_time_prediction.core.ml_state import ml_state
+from work_time_prediction.core.ml_state import MLState
 from work_time_prediction.core.exceptions import NoDataFoundError
+import pandas as pd
 
-
-def train_models() -> int:
+def train_models(df: pd.DataFrame) -> MLState:
     """
     Charge les données de la DB, encode l'ID et entraîne les modèles.
     Retourne le nombre de points de données utilisés.
@@ -24,6 +24,7 @@ def train_models() -> int:
             "Impossible d'entraîner : aucune donnée trouvée dans la base de données."
         )
 
+    ml_state = MLState()
     # 1. Encodage de l'ID Employé
     all_employee_ids = df[DFCols.ID].unique()
     ml_state.id_encoder.fit(all_employee_ids)
@@ -62,4 +63,4 @@ def train_models() -> int:
     
     ml_state.is_trained = True
     
-    return len(df)  # Nombre de points de données utilisés
+    return ml_state

@@ -8,10 +8,12 @@ from work_time_prediction.core.constants import FEATURES, DFCols
 from work_time_prediction.core.database import get_all_data
 from work_time_prediction.core.utils.time_converter import minutes_to_time
 from work_time_prediction.core.exceptions import ModelNotTrainedError, EmployeeNotFoundError
-from work_time_prediction.core.ml_state import ml_state
+from work_time_prediction.core.ml_state import MLState
 
 
-def generate_predictions(employee_id: str, dates_to_predict: List[datetime]) -> List[Dict[str, Any]]:
+def generate_predictions(
+        ml_state: MLState, employee_id: str, dates_to_predict: List[datetime]
+) -> List[Dict[str, Any]]:
     """
     Génère les prédictions pour une liste de dates données.
     Mélange les données historiques réelles et les prédictions ML.

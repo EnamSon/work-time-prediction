@@ -40,6 +40,7 @@ def _calculate_date_range(target_date: datetime, window_size: int) -> List[datet
 
 
 @router.post("/predict/", response_model=PredictionResponse)
+@router.post("/predict", response_model=PredictionResponse)
 async def predict_schedule(
     request: PredictionRequest,
     session_id: str = Header(..., alias="X-Session-ID")
@@ -74,7 +75,7 @@ async def predict_schedule(
         all_dates = _calculate_date_range(target_date, request.window_size)
 
         # Génération des résultats (Historique + Prédictions)
-        raw_results = generate_predictions(request.id, all_dates)
+        raw_results = generate_predictions(model_loaded, request.id, all_dates)
 
         # Construction des objets PredictedDay pour Pydantic
         predictions = [PredictedDay(**data) for data in raw_results]

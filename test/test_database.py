@@ -11,6 +11,7 @@ from work_time_prediction.core.database import (
     get_all_data, 
     get_db_connection
 )
+from work_time_prediction.core.required_columns import RequiredColumnsMapping
 from work_time_prediction.core.exceptions import InvalidCsvFormatError
 from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DFCols, DF_COLS
 
@@ -34,6 +35,7 @@ def temp_db_path(tmp_path):
 def test_load_data_from_csv_success():
     """Teste le chargement et le prétraitement d'un CSV valide."""
     csv_data = io.StringIO(MOCK_CSV_CONTENT)
+
     df = load_data_from_csv(csv_data)
     
     assert not df.empty

@@ -1,15 +1,14 @@
 # Configuration globale des colonnes
 from __future__ import annotations
 from copy import copy
-
 class RequiredColumnsMapping:
     def __init__(
-            self, id="Employee ID", date = "Date", start = "First Punch", end = "Last Punch"
+            self, id_column: str, date_column: str, start_time_column: str, end_time_column: str
     ) -> None:
-        self.id = id
-        self.date = date
-        self.start = start
-        self.end = end
+        self.id = id_column
+        self.date = date_column
+        self.start = start_time_column
+        self.end = end_time_column
 
     def clean(self) -> RequiredColumnsMapping:
         column_clean = copy(self)
@@ -19,4 +18,3 @@ class RequiredColumnsMapping:
         column_clean.end = self.end.replace(" ", "_")
         return column_clean
 
-required_columns = RequiredColumnsMapping()

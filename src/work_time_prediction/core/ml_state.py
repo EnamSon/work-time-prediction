@@ -5,7 +5,7 @@ from typing import Any, Dict
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
 
-class GlobalMLState:
+class MLState:
     """Conteneur pour les modèles entraînés et les encodeurs."""
     
     def __init__(self):
@@ -34,4 +34,4 @@ class GlobalMLState:
 
 
 # Instance globale (Singleton)
-ml_state = GlobalMLState()
+ml_state = MLState()

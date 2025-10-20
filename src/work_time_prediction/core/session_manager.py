@@ -16,7 +16,7 @@ from work_time_prediction.core.constants import (
     MODEL_ENCODER_FILE, MODEL_DATA_DB_FILE, JWT_ALGORITHM,
     JWT_EXPIRATION_DAYS, MIN_JWT_SECRET_LENGTH
 )
-from work_time_prediction.core.ml_state import ml_state
+from work_time_prediction.core.ml_state import MLState
 from work_time_prediction.core.database import get_all_data
 
 
@@ -27,7 +27,7 @@ class SessionManager:
         """Initialise le gestionnaire de sessions."""
         self._ensure_directories()
         self._init_database()
-    
+        self._ml_state: dict[str, MLState] = {}
     def _ensure_directories(self):
         """Crée les répertoires nécessaires s'ils n'existent pas."""
         SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -177,7 +177,7 @@ class SessionManager:
         finally:
             conn.close()
     
-    def save_model(self, session_id: str, data_row_count: int):
+    def save_model(self, ml_state: MLState, session_id: str, data_row_count: int):
         """
         Sauvegarde le modèle ML actuel dans la session.
         
@@ -226,7 +226,7 @@ class SessionManager:
         with open(model_dir / MODEL_METADATA_FILE, 'w') as f:
             json.dump(metadata, f, indent=2)
     
-    def load_model(self, session_id: str) -> bool:
+    def load_model(self, session_id: str) -> MLState | None:
         """
         Charge un modèle depuis la session dans ml_state.
         
@@ -236,9 +236,11 @@ class SessionManager:
         Returns:
             bool: True si le chargement a réussi, False sinon
         """
+        if session_id in self._ml_state:
+            return self._ml_state[session_id]
         session = self.get_session(session_id)
         if not session:
-            return False
+            return None
         
         model_id = session["model_id"]
         model_dir = MODELS_DIR / model_id
@@ -246,8 +248,9 @@ class SessionManager:
         # Vérifier que le modèle existe
         metadata_file = model_dir / MODEL_METADATA_FILE
         if not metadata_file.exists():
-            return False
-        
+            return None
+
+        ml_state = MLState()
         try:
             # Charger les modèles
             with open(model_dir / MODEL_ARRIVAL_FILE, 'rb') as f:
@@ -262,12 +265,13 @@ class SessionManager:
                 ml_state.id_map = encoder_data['id_map']
             
             ml_state.is_trained = True
-            
-            return True
+
+            self._ml_state[session_id] = ml_state
+            return ml_state
             
         except Exception as e:
             print(f"Erreur lors du chargement du modèle: {e}")
-            return False
+            return None
     
     def cleanup_expired_sessions(self):
         """Nettoie les sessions expirées."""

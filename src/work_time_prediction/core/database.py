@@ -9,7 +9,7 @@ from sqlite3 import OperationalError
 from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DF_COLS, DFCols
 from work_time_prediction.core.utils.time_converter import time_to_minutes
 from work_time_prediction.core.exceptions import InvalidCsvFormatError
-from work_time_prediction.core.required_columns import required_columns
+from work_time_prediction.core.required_columns import RequiredColumnsMapping
 
 # --- Fonctions de Base de Données ---
 
@@ -19,7 +19,9 @@ def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
     return conn
 
-def load_data_from_csv(csv_data: io.StringIO) -> pd.DataFrame:
+def load_data_from_csv(
+        csv_data: io.StringIO, required_columns: RequiredColumnsMapping
+    ) -> pd.DataFrame:
     """Charge le CSV et effectue le prétraitement initial."""
     try:
         # Tentative de lecture avec différents séparateurs

@@ -36,6 +36,7 @@ async def create_session(request: Request):
         raise HTTPException(status_code=500, detail=f"Erreur lors de la création de la session: {str(e)}")
 
 
+@router.get("/info/", response_model=SessionInfoResponse)
 @router.get("/info", response_model=SessionInfoResponse)
 async def get_session_info(session_id: str = Header(..., alias="X-Session-ID")):
     """
@@ -66,6 +67,7 @@ async def get_session_info(session_id: str = Header(..., alias="X-Session-ID")):
     )
 
 
+@router.delete("/delete/")
 @router.delete("/delete")
 async def delete_session(session_id: str = Header(..., alias="X-Session-ID")):
     """
@@ -89,7 +91,7 @@ async def delete_session(session_id: str = Header(..., alias="X-Session-ID")):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression: {str(e)}")
 
-
+@router.get("/list/")
 @router.get("/list")
 async def list_user_sessions(request: Request):
     """
@@ -108,6 +110,7 @@ async def list_user_sessions(request: Request):
     }
 
 
+@router.get("/cleanup/")
 @router.post("/cleanup")
 async def cleanup_expired():
     """

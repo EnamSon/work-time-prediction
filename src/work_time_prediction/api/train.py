@@ -1,22 +1,25 @@
 # Route d'entraînement du modèle avec gestion de session
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Header
-from typing import Optional
+from fastapi import APIRouter, UploadFile, File, HTTPException, Header, Form
 import io
 
 from work_time_prediction.core.database import load_data_from_csv, save_data_to_db
 from work_time_prediction.core.train_models import train_models
 from work_time_prediction.core.exceptions import InvalidCsvFormatError, NoDataFoundError
 from work_time_prediction.core.session_manager import session_manager
-
-
+from work_time_prediction.core.required_columns import RequiredColumnsMapping
 router = APIRouter()
 
 
 @router.post("/train/")
+@router.post("/train")
 async def train_model(
     file: UploadFile = File(...),
-    session_id: Optional[str] = Header(None, alias="X-Session-ID")
+    id_column: str = Form(...),
+    date_column: str = Form(...),
+    start_time_column: str = Form(...),
+    end_time_column: str = Form(),
+    session_id: str | None = Header(None, alias="X-Session-ID"),
 ):
     """
     Upload un CSV, entraîne le modèle et sauvegarde dans la session.
@@ -46,7 +49,10 @@ async def train_model(
         csv_data = io.StringIO(contents.decode('utf-8'))
         
         # Charger et traiter les données
-        df = load_data_from_csv(csv_data)
+        required_columns_mapping = RequiredColumnsMapping(
+            id_column, date_column, start_time_column, end_time_column
+        )
+        df = load_data_from_csv(csv_data, required_columns_mapping)
         
         if df.empty:
             raise InvalidCsvFormatError("Le fichier CSV ne contient aucune donnée valide après nettoyage")
@@ -55,16 +61,17 @@ async def train_model(
         save_data_to_db(df)
         
         # Entraîner les modèles
-        data_row_count = train_models()
-        
+        ml_state = train_models(df)
+        data_row_count = len(df)
+    
         # Sauvegarder le modèle dans la session
-        session_manager.save_model(session_id, data_row_count)
+        session_manager.save_model(ml_state, session_id, data_row_count)
         
         return {
             "message": "Modèle entraîné et sauvegardé avec succès",
             "session_id": session_id,
             "data_points": data_row_count,
-            "employees": len(df['Employee_ID'].unique())
+            "employees": len(ml_state.id_map)
         }
     
     except InvalidCsvFormatError as e:
