@@ -24,7 +24,7 @@ class GlobalMLState:
         self.is_trained = False
         self.id_map = {}
 
-    def is_employee_known(self, employee_id: str) -> bool:
+    def is_id_known(self, employee_id: str) -> bool:
         """Vérifie si un employé est connu dans le système."""
         return employee_id in self.id_map
 

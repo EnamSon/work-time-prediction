@@ -1,7 +1,7 @@
 # src/work_time_prediction/api/predict.py
 # Endpoint de génération de prédictions
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from datetime import datetime, timedelta
 from typing import List
 import pandas as pd
@@ -9,6 +9,7 @@ import pandas as pd
 from work_time_prediction.models.predict_request import PredictionRequest
 from work_time_prediction.models.predict_response import PredictionResponse, PredictedDay
 from work_time_prediction.core.predictions import generate_predictions
+from work_time_prediction.core.session_manager import session_manager
 from work_time_prediction.core.exceptions import (
     ModelNotTrainedError, 
     EmployeeNotFoundError
@@ -39,20 +40,34 @@ def _calculate_date_range(target_date: datetime, window_size: int) -> List[datet
 
 
 @router.post("/predict/", response_model=PredictionResponse)
-async def get_predictions(request: PredictionRequest):
+async def predict_schedule(
+    request: PredictionRequest,
+    session_id: str = Header(..., alias="X-Session-ID")
+):
     """
-    Prédit les horaires pour une fenêtre de dates autour de la date cible.
+    Génère des prédictions d'horaires pour un employé.
+    Charge automatiquement le modèle depuis la session.
     
     Args:
-        request: Requête contenant l'ID employé, la date cible et la taille de fenêtre
-        
+        request: Données de la requête (id, target_date, window_size)
+        session_id: ID de session (requis dans le header)
+    
     Returns:
-        Réponse contenant les prédictions pour toutes les dates
-        
-    Raises:
-        HTTPException: En cas d'erreur de format de date, modèle non entraîné, 
-                      employé non trouvé ou erreur interne
+        PredictionResponse: Liste des prédictions
     """
+    # Valider la session
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session invalide ou expirée")
+    
+    # Charger le modèle depuis la session
+    model_loaded = session_manager.load_model(session_id)
+    if not model_loaded:
+        raise HTTPException(
+            status_code=400, 
+            detail="Aucun modèle entraîné trouvé pour cette session. Veuillez d'abord entraîner un modèle."
+        )
+    
     try:
         # Conversion et détermination de la fenêtre de prédiction
         target_date = datetime.strptime(request.target_date, '%d/%m/%Y')

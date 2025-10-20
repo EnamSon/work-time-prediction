@@ -9,10 +9,10 @@ router = APIRouter()
 
 @router.post("/required_columns_mapping/")
 async def required_columns_mapping(request: RequiredColumnsMappingRequest):
-    required_columns.id = request.id
-    required_columns.date = request.date
-    required_columns.start = request.start_time
-    required_columns.end = request.end_time
+    required_columns.id = request.id_column
+    required_columns.date = request.date_column
+    required_columns.start = request.start_time_column
+    required_columns.end = request.end_time_column
 
     return {
         "detail": "success"
