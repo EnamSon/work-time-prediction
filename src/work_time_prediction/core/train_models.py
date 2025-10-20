@@ -8,8 +8,9 @@ from work_time_prediction.core.database import get_all_data
 from work_time_prediction.core.ml_state import MLState
 from work_time_prediction.core.exceptions import NoDataFoundError
 import pandas as pd
+from pathlib import Path
 
-def train_models(df: pd.DataFrame) -> MLState:
+def train_models(df: pd.DataFrame, data_db_path: str | Path) -> MLState:
     """
     Charge les données de la DB, encode l'ID et entraîne les modèles.
     Retourne le nombre de points de données utilisés.
@@ -17,7 +18,7 @@ def train_models(df: pd.DataFrame) -> MLState:
     Raises:
         NoDataFoundError: Si aucune donnée n'est disponible dans la base de données.
     """
-    df = get_all_data()
+    df = get_all_data(data_db_path)
     
     if df.empty:
         raise NoDataFoundError(

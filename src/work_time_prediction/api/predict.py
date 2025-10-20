@@ -14,7 +14,8 @@ from work_time_prediction.core.exceptions import (
     ModelNotTrainedError, 
     EmployeeNotFoundError
 )
-
+from work_time_prediction.core.utils.folder_manager import get_model_file_path
+from work_time_prediction.core.constants import MODEL_DATA_DB_FILE
 router = APIRouter()
 
 
@@ -70,12 +71,16 @@ async def predict_schedule(
         )
     
     try:
+        model_id = session["model_id"]
+        model_data_db_path = get_model_file_path(model_id, MODEL_DATA_DB_FILE)
         # Conversion et détermination de la fenêtre de prédiction
         target_date = datetime.strptime(request.target_date, '%d/%m/%Y')
         all_dates = _calculate_date_range(target_date, request.window_size)
 
         # Génération des résultats (Historique + Prédictions)
-        raw_results = generate_predictions(model_loaded, request.id, all_dates)
+        raw_results = generate_predictions(
+            model_loaded, request.id, all_dates, model_data_db_path
+        )
 
         # Construction des objets PredictedDay pour Pydantic
         predictions = [PredictedDay(**data) for data in raw_results]

@@ -8,6 +8,8 @@ from work_time_prediction.core.train_models import train_models
 from work_time_prediction.core.exceptions import InvalidCsvFormatError, NoDataFoundError
 from work_time_prediction.core.session_manager import session_manager
 from work_time_prediction.core.required_columns import RequiredColumnsMapping
+from work_time_prediction.core.utils.folder_manager import get_model_file_path
+from work_time_prediction.core.constants import MODEL_DATA_DB_FILE
 router = APIRouter()
 
 
@@ -56,12 +58,14 @@ async def train_model(
         
         if df.empty:
             raise InvalidCsvFormatError("Le fichier CSV ne contient aucune donnée valide après nettoyage")
-        
+
+        model_id = session["model_id"]
+        model_data_db_path = get_model_file_path(model_id, MODEL_DATA_DB_FILE)
         # Sauvegarder dans la DB de la session (pas la DB globale)
-        save_data_to_db(df)
+        save_data_to_db(df, model_data_db_path)
         
         # Entraîner les modèles
-        ml_state = train_models(df)
+        ml_state = train_models(df, model_data_db_path)
         data_row_count = len(df)
     
         # Sauvegarder le modèle dans la session

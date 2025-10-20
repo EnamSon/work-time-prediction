@@ -18,7 +18,8 @@ from work_time_prediction.core.constants import (
 )
 from work_time_prediction.core.ml_state import MLState
 from work_time_prediction.core.database import get_all_data
-
+from work_time_prediction.core.constants import SCHEDULE_TABLE_NAME
+from work_time_prediction.core.utils.folder_manager import get_model_file_path
 
 class SessionManager:
     """Gère les sessions utilisateur et la persistance des modèles."""
@@ -28,6 +29,7 @@ class SessionManager:
         self._ensure_directories()
         self._init_database()
         self._ml_state: dict[str, MLState] = {}
+
     def _ensure_directories(self):
         """Crée les répertoires nécessaires s'ils n'existent pas."""
         SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -190,28 +192,27 @@ class SessionManager:
             raise ValueError("Session invalide ou expirée")
         
         model_id = session["model_id"]
-        model_dir = MODELS_DIR / model_id
         
         # Sauvegarder les modèles
-        with open(model_dir / MODEL_ARRIVAL_FILE, 'wb') as f:
+        with open(get_model_file_path(model_id, MODEL_ARRIVAL_FILE), 'wb') as f:
             pickle.dump(ml_state.model_start_time, f)
         
-        with open(model_dir / MODEL_DEPARTURE_FILE, 'wb') as f:
+        with open(get_model_file_path(model_id, MODEL_DEPARTURE_FILE), 'wb') as f:
             pickle.dump(ml_state.model_end_time, f)
         
-        with open(model_dir / MODEL_ENCODER_FILE, 'wb') as f:
+        with open(get_model_file_path(model_id, MODEL_ENCODER_FILE), 'wb') as f:
             pickle.dump({
                 'encoder': ml_state.id_encoder,
                 'id_map': ml_state.id_map
             }, f)
         
         # Sauvegarder les données
-        df = get_all_data()
+        model_data_db_path = get_model_file_path(model_id, MODEL_DATA_DB_FILE)
+        df = get_all_data(model_data_db_path)
         import sqlite3
-        data_db_path = model_dir / MODEL_DATA_DB_FILE
-        conn = sqlite3.connect(data_db_path)
+        conn = sqlite3.connect(model_data_db_path)
         try:
-            df.to_sql('schedule_data', conn, if_exists='replace', index=False)
+            df.to_sql(SCHEDULE_TABLE_NAME, conn, if_exists='replace', index=False)
         finally:
             conn.close()
         
@@ -223,7 +224,7 @@ class SessionManager:
             'is_trained': ml_state.is_trained
         }
         
-        with open(model_dir / MODEL_METADATA_FILE, 'w') as f:
+        with open(get_model_file_path(model_id, MODEL_METADATA_FILE), 'w') as f:
             json.dump(metadata, f, indent=2)
     
     def load_model(self, session_id: str) -> MLState | None:
@@ -243,23 +244,22 @@ class SessionManager:
             return None
         
         model_id = session["model_id"]
-        model_dir = MODELS_DIR / model_id
         
         # Vérifier que le modèle existe
-        metadata_file = model_dir / MODEL_METADATA_FILE
+        metadata_file = get_model_file_path(model_id, MODEL_METADATA_FILE)
         if not metadata_file.exists():
             return None
 
         ml_state = MLState()
         try:
             # Charger les modèles
-            with open(model_dir / MODEL_ARRIVAL_FILE, 'rb') as f:
+            with open(get_model_file_path(model_id, MODEL_ARRIVAL_FILE), 'rb') as f:
                 ml_state.model_start_time = pickle.load(f)
             
-            with open(model_dir / MODEL_DEPARTURE_FILE, 'rb') as f:
+            with open(get_model_file_path(model_id, MODEL_DEPARTURE_FILE), 'rb') as f:
                 ml_state.model_end_time = pickle.load(f)
             
-            with open(model_dir / MODEL_ENCODER_FILE, 'rb') as f:
+            with open(get_model_file_path(model_id, MODEL_ENCODER_FILE), 'rb') as f:
                 encoder_data = pickle.load(f)
                 ml_state.id_encoder = encoder_data['encoder']
                 ml_state.id_map = encoder_data['id_map']

@@ -9,10 +9,10 @@ from work_time_prediction.core.database import get_all_data
 from work_time_prediction.core.utils.time_converter import minutes_to_time
 from work_time_prediction.core.exceptions import ModelNotTrainedError, EmployeeNotFoundError
 from work_time_prediction.core.ml_state import MLState
-
+from pathlib import Path
 
 def generate_predictions(
-        ml_state: MLState, employee_id: str, dates_to_predict: List[datetime]
+        ml_state: MLState, employee_id: str, dates_to_predict: List[datetime], data_db_path: str | Path
 ) -> List[Dict[str, Any]]:
     """
     Génère les prédictions pour une liste de dates données.
@@ -25,7 +25,7 @@ def generate_predictions(
          raise EmployeeNotFoundError(employee_id)
     
     # 1. Récupération des données historiques
-    historical_df = get_all_data()
+    historical_df = get_all_data(data_db_path)
     emp_history = historical_df[historical_df[DFCols.ID] == employee_id]
     historical_data_map = {
         row[DFCols.DATE].strftime('%d/%m/%Y'): {

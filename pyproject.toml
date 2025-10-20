@@ -30,8 +30,8 @@ pythonpath = ["src"]
 [tool.mypy]
 warn_unused_ignores = true
 warn_unused_configs = true
-mypy_path = ["src", "tests"]
-files = ["src", "tests"]
+mypy_path = ["src", "test"]
+files = ["src", "test"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

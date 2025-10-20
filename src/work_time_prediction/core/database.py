@@ -5,18 +5,18 @@ import pandas as pd
 import io
 # Importation de l'exception spécifique pour la base de données
 from sqlite3 import OperationalError 
-
-from work_time_prediction.core.constants import DB_FILE, TABLE_NAME, DF_COLS, DFCols
+from pathlib import Path
+from work_time_prediction.core.constants import SCHEDULE_TABLE_NAME, DF_COLS, DFCols
 from work_time_prediction.core.utils.time_converter import time_to_minutes
 from work_time_prediction.core.exceptions import InvalidCsvFormatError
 from work_time_prediction.core.required_columns import RequiredColumnsMapping
 
 # --- Fonctions de Base de Données ---
 
-def get_db_connection():
+def get_db_connection(data_db_path: str | Path):
     """Crée et retourne une connexion SQLite (ici, en mémoire pour la simplicité du PoC)."""
     # Pour un déploiement réel, vous utiliseriez un chemin de fichier pour DB_NAME
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(data_db_path)
     return conn
 
 def load_data_from_csv(
@@ -64,20 +64,20 @@ def load_data_from_csv(
         raise InvalidCsvFormatError(f"Échec du chargement ou du prétraitement du CSV : {e}")
 
 
-def save_data_to_db(df: pd.DataFrame):
+def save_data_to_db(df: pd.DataFrame, data_db_path: str | Path):
     """Sauvegarde le DataFrame traité dans la base de données."""
-    conn = get_db_connection()
+    conn = get_db_connection(data_db_path)
     try:
         # Écraser la table existante
-        df.to_sql(TABLE_NAME, conn, if_exists='replace', index=False)
+        df.to_sql(SCHEDULE_TABLE_NAME, conn, if_exists='replace', index=False)
     finally:
         conn.close()
 
-def get_all_data() -> pd.DataFrame:
+def get_all_data(data_db_path: str | Path) -> pd.DataFrame:
     """Récupère toutes les données de la base de données."""
-    conn = get_db_connection()
+    conn = get_db_connection(data_db_path)
     try:
-        df = pd.read_sql_query(f"SELECT * FROM {TABLE_NAME}", conn, parse_dates=[DFCols.DATE])
+        df = pd.read_sql_query(f"SELECT * FROM {SCHEDULE_TABLE_NAME}", conn, parse_dates=[DFCols.DATE])
         # Re-ajouter les colonnes Day_of_Week et Day_of_Year pour l'entraînement
         df[DFCols.DAY_OF_YEAR] = df[DFCols.DATE].dt.dayofyear
         df[DFCols.DAY_OF_WEEK] = df[DFCols.DATE].dt.dayofweek

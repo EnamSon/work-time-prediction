@@ -148,3 +148,6 @@ DATETIME_FORMAT = "%d/%m/%Y %H:%M:%S"
 MAX_MODELS_IN_CACHE = 50
 
 DB_FILE = APP_ROOT_DIR / DB_NAME
+
+# Nom de la table de données
+SCHEDULE_TABLE_NAME = "schedule_data"
