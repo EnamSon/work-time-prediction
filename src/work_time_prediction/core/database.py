@@ -49,8 +49,8 @@ def load_data_from_csv(
         df[DFCols.ID] = df[required_columns_clean.id].astype(str)
 
         # Ingestion de données brutes pour le nettoyage
-        df[DFCols.START_TIME_BY_MINUTES] = df[required_columns_clean.start].apply(time_to_minutes)
-        df[DFCols.END_TIME_BY_MINUTES] = df[required_columns_clean.end].apply(time_to_minutes)
+        df[DFCols.START_TIME_BY_MINUTES] = df[required_columns_clean.start_time].apply(time_to_minutes)
+        df[DFCols.END_TIME_BY_MINUTES] = df[required_columns_clean.end_time].apply(time_to_minutes)
         df[DFCols.DATE] = pd.to_datetime(df[required_columns_clean.date], format='%d/%m/%Y', errors='coerce')
 
         # Nettoyage et filtrage

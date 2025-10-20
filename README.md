@@ -33,36 +33,51 @@ poetry run uvicorn work_time_prediction.main:app --app-dir src
 ```
 
 ### Availables enpoints:
-- GET /api/: status check
+
+- POST /api/session/create/: Create new session and return the session id
 
     ```bash
-    curl "http://127.0.0.1:8000/api/"
+    curl -X POST "http://127.0.0.1:8000/api/session/create/"
+    ```    
+
+- GET /api/session/info: Get session informations
+    ```bash
+    curl "http://localhost:8000/api/session/info/" \
+    -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672"
     ```
 
-- POST /api/train: upload csv, store datas in sqlite database, train model
+- GET /api/session/list/: List all active sessions of user based on IP address
+
+    ```bash
+    curl  "http://localhost:8000/api/session/list/"
+    ```
+
+- DELETE /api/session/delete/
+
+    ```bash
+    curl "http://localhost:8000/api/session/delete/" \
+    -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672"
+    ```
+
+- POST /api/train_models: upload csv, store datas in sqlite database, train model
 
     ```bash
     curl -X POST "http://127.0.0.1:8000/api/train/" \
-        -H "accept: application/json" \
-        -F "file=@/path/to/your/file.csv"
+        -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672" \
+        -F "file=@/path/to/your/file.csv" \
+        -F "id_column=YOUR_ID_COLUMN_NAME" \
+        -F "data_column=YOUR_DATE_COLUMN_NAME" \
+        -F "start_time_column=YOUR_START_TIME_COLUMN_NAME" \
+        -F "end_time_column=YOUR_END_TIME_COLUMN_NAME"
     ```
 
 - POST /api/predict: get predictions
 
     ```bash
     curl -X POST "http://127.0.0.1:8000/api/predict/" \
-        -H "accept: application/json" \
+        -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672" \
         -H "Content-Type: application/json" \
-        -d '{"id": "1", "target_date": "25/12/2025"}'
-    ```
-
-- POST /api/required_columns_mapping/: make a required columns mapping before train model
-
-    ```bash
-    curl -X POST "http://127.0.0.1:8000/api/required_columns_mapping/" \
-        -H "accept: application/json" \
-        -H "Content-Type: application/json" \
-        -d '{"id_column": "Employee ID", "date"_column: "Date", "start_time_column": "First Punch", "end_time_column": "Last Punch"}'
+        -d '{"id": "1", "target_date": "25/12/2025", "window_size": 30}'
     ```
 
 ---
@@ -73,10 +88,10 @@ Read documentation at http://127.0.0.1:8000/docs
 
 ---
 
-## Tests
+## TODO
 
-Run the full test suite:
-
-```bash
-poetry run pytest
-```
+- improve predictions
+- add summarize dataset api
+- add security manager
+- make tests
+- clean code

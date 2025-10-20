@@ -7,14 +7,14 @@ class RequiredColumnsMapping:
     ) -> None:
         self.id = id_column
         self.date = date_column
-        self.start = start_time_column
-        self.end = end_time_column
+        self.start_time = start_time_column
+        self.end_time = end_time_column
 
     def clean(self) -> RequiredColumnsMapping:
         column_clean = copy(self)
         column_clean.id = self.id.replace(" ", "_")
         column_clean.date = self.date.replace(" ", "_")
-        column_clean.start = self.start.replace(" ", "_")
-        column_clean.end = self.end.replace(" ", "_")
+        column_clean.start_time = self.start_time.replace(" ", "_")
+        column_clean.end_time = self.end_time.replace(" ", "_")
         return column_clean
 

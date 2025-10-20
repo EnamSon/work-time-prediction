@@ -4,7 +4,7 @@ from typing import Dict, List, Any
 import pandas as pd
 from datetime import datetime
 
-from work_time_prediction.core.constants import FEATURES, DFCols
+from work_time_prediction.core.constants import FEATURES, DFCols, DATE_FORMAT
 from work_time_prediction.core.database import get_all_data
 from work_time_prediction.core.utils.time_converter import minutes_to_time
 from work_time_prediction.core.exceptions import ModelNotTrainedError, EmployeeNotFoundError
@@ -12,7 +12,7 @@ from work_time_prediction.core.ml_state import MLState
 from pathlib import Path
 
 def generate_predictions(
-        ml_state: MLState, employee_id: str, dates_to_predict: List[datetime], data_db_path: str | Path
+        ml_state: MLState, id: str, dates_to_predict: List[datetime], data_db_path: str | Path
 ) -> List[Dict[str, Any]]:
     """
     Génère les prédictions pour une liste de dates données.
@@ -21,14 +21,14 @@ def generate_predictions(
     if not ml_state.is_trained or ml_state.model_start_time is None or ml_state.model_end_time is None:
         raise ModelNotTrainedError()
 
-    if employee_id not in ml_state.id_map:
-         raise EmployeeNotFoundError(employee_id)
+    if id not in ml_state.id_map:
+         raise EmployeeNotFoundError(id)
     
     # 1. Récupération des données historiques
     historical_df = get_all_data(data_db_path)
-    emp_history = historical_df[historical_df[DFCols.ID] == employee_id]
+    emp_history = historical_df[historical_df[DFCols.ID] == id]
     historical_data_map = {
-        row[DFCols.DATE].strftime('%d/%m/%Y'): {
+        row[DFCols.DATE].strftime(DATE_FORMAT): {
             DFCols.START_TIME_BY_MINUTES: row[DFCols.START_TIME_BY_MINUTES],
             DFCols.END_TIME_BY_MINUTES: row[DFCols.END_TIME_BY_MINUTES]
         }
@@ -38,10 +38,10 @@ def generate_predictions(
     # 2. Préparation du DataFrame pour l'inférence (pour les dates non historiques)
     future_data = []
     for date in dates_to_predict:
-        date_str = date.strftime('%d/%m/%Y')
+        date_str = date.strftime(DATE_FORMAT)
         if date_str not in historical_data_map:
             features = {
-                DFCols.ID_ENCODED: ml_state.id_map[employee_id],
+                DFCols.ID_ENCODED: ml_state.id_map[id],
                 DFCols.DAY_OF_WEEK: date.weekday(),
                 DFCols.DAY_OF_YEAR: date.timetuple().tm_yday,
                 DFCols.DATE: date # Conserver la date pour le mapping
@@ -53,13 +53,13 @@ def generate_predictions(
         X_future = future_df[FEATURES]
         
         # Prédictions
-        pred_arrival_min = ml_state.model_start_time.predict(X_future)
-        pred_departure_min = ml_state.model_end_time.predict(X_future)
+        pred_start_time_by_minutes = ml_state.model_start_time.predict(X_future)
+        pred_end_time_by_minutes = ml_state.model_end_time.predict(X_future)
     else:
         # Aucune prédiction nécessaire, toutes les dates sont historiques
         future_df = pd.DataFrame()
-        pred_arrival_min = []
-        pred_departure_min = []
+        pred_start_time_by_minutes = []
+        pred_end_time_by_minutes = []
 
 
     # 3. Construction des résultats
@@ -67,40 +67,40 @@ def generate_predictions(
     pred_idx = 0
     
     for date in dates_to_predict:
-        date_str = date.strftime('%d/%m/%Y')
+        date_str = date.strftime(DATE_FORMAT)
         
         if date_str in historical_data_map:
             # Utiliser les données historiques réelles
             data = historical_data_map[date_str]
-            arrival_min = data[DFCols.START_TIME_BY_MINUTES]
-            departure_min = data[DFCols.END_TIME_BY_MINUTES]
+            start_time_by_minutes = data[DFCols.START_TIME_BY_MINUTES]
+            end_time_by_minutes = data[DFCols.END_TIME_BY_MINUTES]
             is_historical = True
         else:
             # Utiliser les données prédites
-            if pred_idx < len(pred_arrival_min):
-                arrival_min = pred_arrival_min[pred_idx]
-                departure_min = pred_departure_min[pred_idx]
+            if pred_idx < len(pred_start_time_by_minutes):
+                start_time_by_minutes = pred_start_time_by_minutes[pred_idx]
+                end_time_by_minutes = pred_end_time_by_minutes[pred_idx]
                 pred_idx += 1
             else:
                 # Cela ne devrait pas arriver si la logique est correcte
-                arrival_min = 0
-                departure_min = 0
+                start_time_by_minutes = 0
+                end_time_by_minutes = 0
 
             is_historical = False
             
             # Correction : S'assurer que l'heure de départ prédite est après l'arrivée
-            if departure_min < arrival_min:
-                departure_min = arrival_min + (6 * 60) # Ajout d'une durée de travail minimum
+            if end_time_by_minutes < start_time_by_minutes:
+                end_time_by_minutes = start_time_by_minutes + (6 * 60) # Ajout d'une durée de travail minimum
             
             # S'assurer que les temps prédits sont non-négatifs
-            arrival_min = max(0, arrival_min)
-            departure_min = max(0, departure_min)
+            start_time_by_minutes = max(0, start_time_by_minutes)
+            end_time_by_minutes = max(0, end_time_by_minutes)
 
 
         results.append({
             "date": date_str,
-            "start_time": minutes_to_time(arrival_min),
-            "end_time": minutes_to_time(departure_min),
+            "start_time": minutes_to_time(start_time_by_minutes),
+            "end_time": minutes_to_time(end_time_by_minutes),
             "historical": is_historical
         })
 

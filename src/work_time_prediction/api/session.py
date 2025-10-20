@@ -63,7 +63,7 @@ async def get_session_info(session_id: str = Header(..., alias="X-Session-ID")):
         last_accessed=session["last_accessed"],
         expires_at=session["expires_at"],
         is_model_trained=ml_state.is_trained,
-        employee_count=len(ml_state.id_map) if ml_state.is_trained else 0
+        ids_count=len(ml_state.id_map) if ml_state.is_trained else 0
     )
 
 
@@ -110,7 +110,7 @@ async def list_user_sessions(request: Request):
     }
 
 
-@router.get("/cleanup/")
+@router.post("/cleanup/")
 @router.post("/cleanup")
 async def cleanup_expired():
     """

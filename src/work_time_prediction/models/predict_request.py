@@ -8,4 +8,4 @@ class PredictionRequest(BaseModel):
     """
     id: str
     target_date: str # Format attendu : jj/mm/aaaa
-    window_size: int = 365
+    window_size: int = 31

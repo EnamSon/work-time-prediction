@@ -24,13 +24,13 @@ class MLState:
         self.is_trained = False
         self.id_map = {}
 
-    def is_id_known(self, employee_id: str) -> bool:
+    def is_id_known(self, id: str) -> bool:
         """Vérifie si un employé est connu dans le système."""
-        return employee_id in self.id_map
+        return id in self.id_map
 
-    def get_encoded_id(self, employee_id: str) -> int:
+    def get_encoded_id(self, id: str) -> int:
         """Retourne l'ID encodé d'un employé."""
-        return self.id_map[employee_id]
+        return self.id_map[id]
 
 
 # Instance globale (Singleton)

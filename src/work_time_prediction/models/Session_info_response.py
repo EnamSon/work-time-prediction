@@ -8,4 +8,4 @@ class SessionInfoResponse(BaseModel):
     last_accessed: str
     expires_at: str
     is_model_trained: bool
-    employee_count: int
+    ids_count: int

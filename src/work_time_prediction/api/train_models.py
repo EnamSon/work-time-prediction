@@ -13,8 +13,8 @@ from work_time_prediction.core.constants import MODEL_DATA_DB_FILE
 router = APIRouter()
 
 
-@router.post("/train/")
-@router.post("/train")
+@router.post("/train_models/")
+@router.post("/train_models")
 async def train_model(
     file: UploadFile = File(...),
     id_column: str = Form(...),
