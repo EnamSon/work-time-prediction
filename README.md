@@ -101,8 +101,9 @@ Read documentation at http://127.0.0.1:8000/docs
 
 ## TODO
 
+- migrate to SQLAlchemy
+- add security manager
 - improve predictions
 - add summarize dataset api
-- add security manager
 - make tests
-- clean code
+- clean code (always)
