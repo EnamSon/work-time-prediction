@@ -22,7 +22,7 @@ version = "0.1.0"
 packages = [{include = "work_time_prediction", from = "src"}]
 
 [tool.poetry.scripts]
-wtp = "work_time_prediction.main:app"
+work-time-prediction = "work_time_prediction.main:run"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
