@@ -9,7 +9,7 @@ ensure_directories_exist()
 # Initialisation de l'application FastAPI
 app = FastAPI(
     title="Work Time Prediction API",
-    description="API de prédiction d'horaires des employés basée sur le Machine Learning et stockée dans SQLite."
+    description="API de prédiction des intervalles horaires de travail avec système de sessions."
 )
 
 # Configuration CORS pour le développement
@@ -22,7 +22,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"], # A restreindre en prod
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,6 +30,47 @@ app.add_middleware(
 
 # Inclusion du routeur principal contenant les endpoints
 app.include_router(router, prefix="/api")
+
+@app.get("/api/")
+@app.get("/api")
+async def root():
+    """Endpoint de vérification de l'état de l'API."""
+    return {
+        "status": "operational",
+        "version": "0.1.0",
+        "message": "Work Time Prediction API with Session Management",
+        "endpoints": {
+            "session": {
+                "create": "POST /api/session/create",
+                "info": "GET /api/session/info",
+                "list": "GET /api/session/list",
+                "delete": "DELETE /api/session/delete"
+            },
+            "training": {
+                "train": "POST /api/train_models/"
+            },
+            "prediction": {
+                "predict": "POST /api/predict/"
+            }
+        }
+    }
+
+
+def run():
+    import argparse
+    import uvicorn
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", type=str, default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+
+    args = parser.parse_args()
+
+    uvicorn.run(app, host=args.host, port=args.port)
+
+
+if __name__ == "__main__":
+    run()
 
 # Note: Pour lancer l'application avec Poetry, utilisez:
 # uvicorn work_time_prediction.main:app --reload --app-dir src
