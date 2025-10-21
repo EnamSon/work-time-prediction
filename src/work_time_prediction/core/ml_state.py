@@ -31,7 +31,3 @@ class MLState:
     def get_encoded_id(self, id: str) -> int:
         """Retourne l'ID encodé d'un employé."""
         return self.id_map[id]
-
-
-# Instance globale (Singleton)
-ml_state = MLState()

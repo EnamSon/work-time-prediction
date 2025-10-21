@@ -77,7 +77,7 @@ You can specify another host IP or another port with optional arguments `--host`
         -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672" \
         -F "file=@/path/to/your/file.csv" \
         -F "id_column=YOUR_ID_COLUMN_NAME" \
-        -F "data_column=YOUR_DATE_COLUMN_NAME" \
+        -F "date_column=YOUR_DATE_COLUMN_NAME" \
         -F "start_time_column=YOUR_START_TIME_COLUMN_NAME" \
         -F "end_time_column=YOUR_END_TIME_COLUMN_NAME"
     ```

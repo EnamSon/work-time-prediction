@@ -3,7 +3,6 @@
 from fastapi import APIRouter, HTTPException, Request, Header
 
 from work_time_prediction.core.session_manager import session_manager
-from work_time_prediction.core.ml_state import ml_state
 from work_time_prediction.models.Session_create_response import SessionCreateResponse
 from work_time_prediction.models.Session_info_response import SessionInfoResponse
 
@@ -55,15 +54,15 @@ async def get_session_info(session_id: str = Header(..., alias="X-Session-ID")):
     
     # Vérifier si un modèle est entraîné
     model_trained = session_manager.load_model(session_id)
-    
+
     return SessionInfoResponse(
         session_id=session["session_id"],
         model_id=session["model_id"],
         created_at=session["created_at"],
         last_accessed=session["last_accessed"],
         expires_at=session["expires_at"],
-        is_model_trained=ml_state.is_trained,
-        ids_count=len(ml_state.id_map) if ml_state.is_trained else 0
+        is_model_trained=model_trained.is_trained if model_trained else False,
+        ids_count=len(model_trained.id_map) if model_trained else 0
     )
 
 
