@@ -10,10 +10,7 @@ from work_time_prediction.models.predict_request import PredictionRequest
 from work_time_prediction.models.predict_response import PredictionResponse, PredictedDay
 from work_time_prediction.core.predictions import generate_predictions
 from work_time_prediction.core.session_manager import session_manager
-from work_time_prediction.core.exceptions import (
-    ModelNotTrainedError, 
-    EmployeeNotFoundError
-)
+from work_time_prediction.core.exceptions import ModelNotTrainedError, IDNotFoundError
 from work_time_prediction.core.utils.folder_manager import get_model_file_path
 from work_time_prediction.core.constants import MODEL_DATA_DB_FILE
 router = APIRouter()
@@ -90,7 +87,7 @@ async def predict_schedule(
     except ModelNotTrainedError as e:
         raise HTTPException(status_code=400, detail=e.message)
     
-    except EmployeeNotFoundError as e:
+    except IDNotFoundError as e:
         raise HTTPException(status_code=404, detail=e.message)
     
     except ValueError:

@@ -6,7 +6,7 @@ class ModelNotTrainedError(Exception):
         self.message = message
         super().__init__(self.message)
 
-class EmployeeNotFoundError(Exception):
+class IDNotFoundError(Exception):
     """Exception levée lorsque l'ID de l'employé est inconnu."""
     def __init__(self, employee_id: str):
         self.message = f"L'employé avec l'ID '{employee_id}' est introuvable dans les données historiques."
