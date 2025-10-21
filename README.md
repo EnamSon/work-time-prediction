@@ -20,19 +20,28 @@ Use at your own risk, and expect frequent change.
 ```bash
 git clone https://github.com/EnamSon/work-time-prediction.git
 cd work-time-prediction
+poetry install
 ```
 
 ---
 
 ## Run the server
 
-The server runs at http://127.0.0.1:8000
+The server runs at http://127.0.0.1:8000 by default
 
 ```bash
-poetry run uvicorn work_time_prediction.main:app --app-dir src
+poetry run work-time-prediction
 ```
 
+You can specify another host IP or another port with optional arguments `--host` or `--port`.
+
 ### Availables enpoints:
+
+- GET /api/: Summarize the work-time-prediction API
+
+    ```bash
+    curl "http://127.0.0.1:8000/api/"
+    ```
 
 - POST /api/session/create/: Create new session and return the session id
 
@@ -41,8 +50,10 @@ poetry run uvicorn work_time_prediction.main:app --app-dir src
     ```    
 
 - GET /api/session/info: Get session informations
+
     ```bash
     curl "http://localhost:8000/api/session/info/" \
+    -H "accept: application/json" \
     -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672"
     ```
 
@@ -62,7 +73,7 @@ poetry run uvicorn work_time_prediction.main:app --app-dir src
 - POST /api/train_models: upload csv, store datas in sqlite database, train model
 
     ```bash
-    curl -X POST "http://127.0.0.1:8000/api/train/" \
+    curl -X POST "http://127.0.0.1:8000/api/train_models/" \
         -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672" \
         -F "file=@/path/to/your/file.csv" \
         -F "id_column=YOUR_ID_COLUMN_NAME" \
