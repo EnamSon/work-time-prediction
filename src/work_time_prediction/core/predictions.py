@@ -7,7 +7,7 @@ from datetime import datetime
 from work_time_prediction.core.constants import FEATURES, DFCols, DATE_FORMAT
 from work_time_prediction.core.database import get_all_data
 from work_time_prediction.core.utils.time_converter import minutes_to_time
-from work_time_prediction.core.exceptions import ModelNotTrainedError, EmployeeNotFoundError
+from work_time_prediction.core.exceptions import ModelNotTrainedError, IDNotFoundError
 from work_time_prediction.core.ml_state import MLState
 from pathlib import Path
 
@@ -22,7 +22,7 @@ def generate_predictions(
         raise ModelNotTrainedError()
 
     if id not in ml_state.id_map:
-         raise EmployeeNotFoundError(id)
+         raise IDNotFoundError(id)
     
     # 1. Récupération des données historiques
     historical_df = get_all_data(data_db_path)
