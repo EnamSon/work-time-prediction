@@ -3,8 +3,8 @@
 from fastapi import APIRouter, HTTPException, Request, Header
 
 from work_time_prediction.core.session_manager import session_manager
-from work_time_prediction.models.Session_create_response import SessionCreateResponse
-from work_time_prediction.models.Session_info_response import SessionInfoResponse
+from work_time_prediction.models.session_create_response import SessionCreateResponse
+from work_time_prediction.models.session_info_response import SessionInfoResponse
 
 router = APIRouter(prefix="/session")
 
