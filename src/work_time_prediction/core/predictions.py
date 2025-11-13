@@ -4,7 +4,7 @@ from typing import Dict, List, Any
 import pandas as pd
 from datetime import datetime
 
-from work_time_prediction.core.constants import FEATURES, DFCols, DATE_FORMAT
+from work_time_prediction.core.constants import FEATURES, DFCols, DATE_FORMAT, WEEKDAY_NAMES
 from work_time_prediction.core.database import get_all_data
 from work_time_prediction.core.utils.time_converter import minutes_to_time
 from work_time_prediction.core.exceptions import ModelNotTrainedError, IDNotFoundError
@@ -99,6 +99,7 @@ def generate_predictions(
 
         results.append({
             "date": date_str,
+            "weekday": WEEKDAY_NAMES[date.weekday()],
             "start_time": minutes_to_time(start_time_by_minutes),
             "end_time": minutes_to_time(end_time_by_minutes),
             "historical": is_historical

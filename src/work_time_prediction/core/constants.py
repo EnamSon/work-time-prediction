@@ -146,3 +146,5 @@ MAX_MODELS_IN_CACHE = 50
 
 # Nom de la table de données
 SCHEDULE_TABLE_NAME = "schedule_data"
+
+WEEKDAY_NAMES = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]

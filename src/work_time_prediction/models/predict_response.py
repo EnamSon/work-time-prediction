@@ -8,6 +8,7 @@ class PredictedDay(BaseModel):
     Définit la structure de données pour un jour prédit ou historique.
     """
     date: str
+    weekday: str
     start_time: str
     end_time: str
     historical: bool
