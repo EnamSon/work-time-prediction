@@ -1,103 +1,113 @@
 # src/work_time_prediction/api/predict.py
-# Endpoint de génération de prédictions
+# Route de prédiction avec gestion de session
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Request
 from datetime import datetime, timedelta
-from typing import List
-import pandas as pd
 
 from work_time_prediction.models.predict_request import PredictionRequest
 from work_time_prediction.models.predict_response import PredictionResponse, PredictedDay
 from work_time_prediction.core.predictions import generate_predictions
-from work_time_prediction.core.session_manager import session_manager
 from work_time_prediction.core.exceptions import ModelNotTrainedError, IDNotFoundError
-from work_time_prediction.core.utils.folder_manager import get_model_file_path
-from work_time_prediction.core.constants import MODEL_DATA_DB_FILE
+from work_time_prediction.core.session_manager import session_manager
+from work_time_prediction.core.database import create_security_log
+from work_time_prediction.core.constants import (
+    DATE_FORMAT, SecurityEventType, LogSeverity, ErrorMessages, WEEKDAY_NAMES
+)
+
+
 router = APIRouter()
 
 
-def _calculate_date_range(target_date: datetime, window_size: int) -> List[datetime]:
-    """
-    Calcule la plage de dates autour de la date cible.
-    
-    Args:
-        target_date: Date centrale pour les prédictions
-        window_size: Taille de la fenêtre (nombre total de jours)
-        
-    Returns:
-        Liste des dates dans la fenêtre
-    """
-    start_date = target_date - timedelta(days=window_size // 2)
-    end_date = target_date + timedelta(days=window_size // 2)
-    
-    # Conversion explicite des Timestamp pandas en datetime
-    return [
-        d.to_pydatetime() 
-        for d in pd.date_range(start=start_date, end=end_date, freq='D')
-    ]
-
-
 @router.post("/predict/", response_model=PredictionResponse)
-@router.post("/predict", response_model=PredictionResponse)
 async def predict_schedule(
+    http_request: Request,
     request: PredictionRequest,
-    session_id: str = Header(..., alias="X-Session-ID")
+    session_id: str = Header(..., alias="X-Session-ID"),
 ):
     """
-    Génère des prédictions d'horaires pour un employé.
+    Génère des prédictions de temps pour une entité.
     Charge automatiquement le modèle depuis la session.
     
     Args:
         request: Données de la requête (id, target_date, window_size)
         session_id: ID de session (requis dans le header)
+        http_request: Requête HTTP (pour logging IP)
     
     Returns:
         PredictionResponse: Liste des prédictions
     """
-    # Valider la session
-    session = session_manager.get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session invalide ou expirée")
+    # Obtenir l'IP du client
+    client_ip = http_request.client.host if http_request.client else "unknown"
     
-    # Charger le modèle depuis la session
-    model_loaded = session_manager.load_model(session_id)
-    if not model_loaded:
+    # Valider la session
+    session = session_manager.get_session(session_id, current_ip=client_ip)
+    if not session:
+        raise HTTPException(status_code=404, detail=ErrorMessages.SESSION_INVALID)
+    
+    # Charger le modèle depuis la session (avec cache)
+    model_state = session_manager.load_model(session_id)
+    if not model_state or not model_state.is_trained:
         raise HTTPException(
-            status_code=400, 
-            detail="Aucun modèle entraîné trouvé pour cette session. Veuillez d'abord entraîner un modèle."
+            status_code=400,
+            detail="Aucun modèle entraîné trouvé pour cette session. Veuillez d'abord entraîner un modèle via POST /api/train/"
         )
     
     try:
-        model_id = session["model_id"]
-        model_data_db_path = get_model_file_path(model_id, MODEL_DATA_DB_FILE)
-        # Conversion et détermination de la fenêtre de prédiction
-        target_date = datetime.strptime(request.target_date, '%d/%m/%Y')
-        all_dates = _calculate_date_range(target_date, request.window_size)
+        # Parser la date cible
+        target_date = datetime.strptime(request.target_date, DATE_FORMAT)
+        
+        # Générer la plage de dates
+        half_window = request.window_size // 2
+        start_date = target_date - timedelta(days=half_window)
+        end_date = target_date + timedelta(days=half_window)
 
-        # Génération des résultats (Historique + Prédictions)
-        raw_results = generate_predictions(
-            model_loaded, request.id, all_dates, model_data_db_path
+        dates_to_predict = [
+            start_date + timedelta(days=i)
+            for i in range((end_date - start_date).days + 1)
+        ]
+        
+        # Générer les prédictions (passer le model_state explicitement)
+        predictions_data = generate_predictions(
+            model_state=model_state,
+            session_id=session_id,
+            entity_id=request.id,
+            dates_to_predict=dates_to_predict
+        )
+        
+        # Convertir au format de réponse
+        predicted_days = [
+            PredictedDay(
+                date=pred["date"],
+                weekday=pred["weekday"],
+                start_time=pred["start_time"],
+                end_time=pred["end_time"],
+                historical=pred["historical"]
+            )
+            for pred in predictions_data
+        ]
+        
+        # Log de sécurité
+        create_security_log(
+            ip_address=client_ip,
+            event_type=SecurityEventType.PREDICTION_MADE,
+            session_id=session_id,
+            event_data=f"entity_id={request.id}, date={request.target_date}",
+            severity=LogSeverity.INFO
         )
 
-        # Construction des objets PredictedDay pour Pydantic
-        predictions = [PredictedDay(**data) for data in raw_results]
-
-        return PredictionResponse(predictions=predictions)
-
+        return PredictionResponse(predictions=predicted_days)
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=ErrorMessages.INVALID_DATE_FORMAT.format(DATE_FORMAT)
+        )
+    
     except ModelNotTrainedError as e:
-        raise HTTPException(status_code=400, detail=e.message)
+        raise HTTPException(status_code=400, detail=str(e))
     
     except IDNotFoundError as e:
-        raise HTTPException(status_code=404, detail=e.message)
-    
-    except ValueError:
-        raise HTTPException(
-            status_code=400, 
-            detail="Format de date cible invalide. Utilisez jj/mm/aaaa."
-        )
+        raise HTTPException(status_code=404, detail=str(e))
     
     except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Erreur interne lors de la prédiction: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la prédiction: {str(e)}")

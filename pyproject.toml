@@ -13,7 +13,9 @@ dependencies = [
     "scikit-learn (>=1.7.2,<2.0.0)",
     "pandas (>=2.3.3,<3.0.0)",
     "uvicorn (>=0.37.0,<0.38.0)",
-    "python-multipart (>=0.0.20,<0.0.21)"
+    "python-multipart (>=0.0.20,<0.0.21)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
+    "cachetools (>=6.2.1,<7.0.0)"
 ]
 
 [tool.poetry]
@@ -45,4 +47,7 @@ dev = [
 ]
 stubs = [
     "pandas-stubs (>=2.3.2.250926,<3.0.0.0)"
+]
+types = [
+    "types-cachetools (>=6.2.0.20251022,<7.0.0.0)"
 ]

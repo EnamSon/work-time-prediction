@@ -1,67 +1,48 @@
 # src/work_time_prediction/core/session_manager.py
-# Gestion des sessions utilisateur et persistance des modèles
+# Gestion des sessions utilisateur et persistance des modèles (refactorisé)
 
-import sqlite3
 import pickle
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional, Dict, Any
-import secrets
-import hashlib
+from cachetools import LRUCache
 
 from work_time_prediction.core.constants import (
-    SESSIONS_DIR, SESSIONS_DB_PATH, MODELS_DIR,
-    MODEL_METADATA_FILE, MODEL_ARRIVAL_FILE, MODEL_DEPARTURE_FILE,
-    MODEL_ENCODER_FILE, MODEL_DATA_DB_FILE, JWT_ALGORITHM,
-    JWT_EXPIRATION_DAYS, MIN_JWT_SECRET_LENGTH
+    JWT_EXPIRATION_DAYS, SESSION_TOKEN_BYTES, MAX_MODELS_IN_CACHE,
+    SecurityEventType, LogSeverity, ErrorMessages, SuccessMessages
 )
-from work_time_prediction.core.ml_state import MLState
-from work_time_prediction.core.database import get_all_data
-from work_time_prediction.core.constants import SCHEDULE_TABLE_NAME
-from work_time_prediction.core.utils.folder_manager import get_model_file_path
+from work_time_prediction.core.model_state import ModelState
+from work_time_prediction.core.database import (
+    init_main_database, init_session_database,
+    create_session_record, get_session_record, delete_session_record,
+    update_session_last_accessed, create_security_log
+)
+from work_time_prediction.core.utils.folder_manager import (
+    create_session_directory, delete_session_directory,
+    get_session_metadata_path, get_session_model_arrival_path,
+    get_session_model_departure_path, get_session_encoder_path,
+    session_exists
+)
+from work_time_prediction.core.utils.token_generator import generate_secure_token
+
 
 class SessionManager:
     """Gère les sessions utilisateur et la persistance des modèles."""
     
     def __init__(self):
         """Initialise le gestionnaire de sessions."""
-        self._ensure_directories()
-        self._init_database()
-        self._ml_state: dict[str, MLState] = {}
-
-    def _ensure_directories(self):
-        """Crée les répertoires nécessaires s'ils n'existent pas."""
-        SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
-        MODELS_DIR.mkdir(parents=True, exist_ok=True)
+        # Cache LRU pour les modèles chargés en mémoire
+        self._model_cache: LRUCache = LRUCache(maxsize=MAX_MODELS_IN_CACHE)
+        
+        # Initialiser la base de données
+        init_main_database()
     
-    def _init_database(self):
-        """Initialise la base de données des sessions."""
-        conn = sqlite3.connect(SESSIONS_DB_PATH)
-        try:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS sessions (
-                    session_id TEXT PRIMARY KEY,
-                    model_id TEXT UNIQUE NOT NULL,
-                    ip_address TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    last_accessed TEXT NOT NULL,
-                    expires_at TEXT NOT NULL,
-                    metadata TEXT
-                )
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_ip_address 
-                ON sessions(ip_address)
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_expires_at 
-                ON sessions(expires_at)
-            """)
-            conn.commit()
-        finally:
-            conn.close()
-    
-    def create_session(self, ip_address: str, metadata: Optional[Dict[str, Any]] = None) -> str:
+    def create_session(
+        self, 
+        ip_address: str, 
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
         """
         Crée une nouvelle session pour un utilisateur.
         
@@ -70,265 +51,275 @@ class SessionManager:
             metadata: Métadonnées additionnelles (optionnel)
         
         Returns:
-            str: ID de session (token JWT-like)
+            str: ID de session (token sécurisé)
         """
         # Générer un ID de session sécurisé
-        session_id = self._generate_session_id()
-        model_id = self._generate_model_id()
+        session_id = generate_secure_token(SESSION_TOKEN_BYTES)
         
-        now = datetime.now()
+        # Dates
+        now = datetime.utcnow()
         expires_at = now + timedelta(days=JWT_EXPIRATION_DAYS)
         
-        conn = sqlite3.connect(SESSIONS_DB_PATH)
-        try:
-            conn.execute("""
-                INSERT INTO sessions 
-                (session_id, model_id, ip_address, created_at, last_accessed, expires_at, metadata)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                session_id,
-                model_id,
-                ip_address,
-                now.isoformat(),
-                now.isoformat(),
-                expires_at.isoformat(),
-                json.dumps(metadata or {})
-            ))
-            conn.commit()
-        finally:
-            conn.close()
+        # Créer l'enregistrement en base de données
+        create_session_record(
+            session_id=session_id,
+            ip_address=ip_address,
+            expires_at=expires_at,
+            metadata=metadata
+        )
         
-        # Créer le répertoire du modèle
-        model_dir = MODELS_DIR / model_id
-        model_dir.mkdir(parents=True, exist_ok=True)
+        # Créer le répertoire de la session
+        create_session_directory(session_id)
+        
+        # Initialiser la base de données de session
+        init_session_database(session_id)
+        
+        # Log de sécurité
+        create_security_log(
+            ip_address=ip_address,
+            event_type=SecurityEventType.SESSION_CREATED,
+            session_id=session_id,
+            event_data=json.dumps({'expires_at': expires_at.isoformat()}),
+            severity=LogSeverity.INFO
+        )
         
         return session_id
     
-    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def get_session(
+        self, 
+        session_id: str, 
+        current_ip: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Récupère les informations d'une session.
         
         Args:
             session_id: ID de la session
+            current_ip: IP actuelle du client (pour logging)
         
         Returns:
             Dict contenant les infos de session ou None si invalide/expirée
         """
-        conn = sqlite3.connect(SESSIONS_DB_PATH)
-        try:
-            cursor = conn.execute("""
-                SELECT session_id, model_id, ip_address, created_at, 
-                       last_accessed, expires_at, metadata
-                FROM sessions
-                WHERE session_id = ?
-            """, (session_id,))
-            
-            row = cursor.fetchone()
-            if not row:
-                return None
-            
-            session_data = {
-                "session_id": row[0],
-                "model_id": row[1],
-                "ip_address": row[2],
-                "created_at": row[3],
-                "last_accessed": row[4],
-                "expires_at": row[5],
-                "metadata": json.loads(row[6])
-            }
-            
-            # Vérifier l'expiration
-            expires_at = datetime.fromisoformat(session_data["expires_at"])
-            if datetime.now() > expires_at:
-                self.delete_session(session_id)
-                return None
-            
-            # Mettre à jour le dernier accès
-            conn.execute("""
-                UPDATE sessions 
-                SET last_accessed = ?
-                WHERE session_id = ?
-            """, (datetime.now().isoformat(), session_id))
-            conn.commit()
-            
-            return session_data
-            
-        finally:
-            conn.close()
-    
-    def delete_session(self, session_id: str):
-        """Supprime une session et ses données associées."""
-        session = self.get_session(session_id)
-        if not session:
-            return
+        session_record = get_session_record(session_id)
         
-        model_id = session["model_id"]
+        if not session_record:
+            return None
         
-        # Supprimer les fichiers du modèle
-        model_dir = MODELS_DIR / model_id
-        if model_dir.exists():
-            import shutil
-            shutil.rmtree(model_dir)
+        # Vérifier l'expiration
+        if session_record.is_expired:
+            self.delete_session(session_id)
+            return None
         
-        # Supprimer l'entrée de la base de données
-        conn = sqlite3.connect(SESSIONS_DB_PATH)
-        try:
-            conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
-            conn.commit()
-        finally:
-            conn.close()
-    
-    def save_model(self, ml_state: MLState, session_id: str, data_row_count: int):
-        """
-        Sauvegarde le modèle ML actuel dans la session.
+        # Log si changement d'IP
+        if current_ip and session_record.ip_address != current_ip:
+            create_security_log(
+                ip_address=current_ip,
+                event_type=SecurityEventType.IP_CHANGED,
+                session_id=session_id,
+                event_data=json.dumps({
+                    'old_ip': session_record.ip_address,
+                    'new_ip': current_ip
+                }),
+                severity=LogSeverity.WARNING
+            )
         
-        Args:
-            session_id: ID de la session
-            data_row_count: Nombre de lignes de données utilisées pour l'entraînement
-        """
-        session = self.get_session(session_id)
-        if not session:
-            raise ValueError("Session invalide ou expirée")
+        # Mettre à jour le dernier accès
+        update_session_last_accessed(session_id)
         
-        model_id = session["model_id"]
-        
-        # Sauvegarder les modèles
-        with open(get_model_file_path(model_id, MODEL_ARRIVAL_FILE), 'wb') as f:
-            pickle.dump(ml_state.model_start_time, f)
-        
-        with open(get_model_file_path(model_id, MODEL_DEPARTURE_FILE), 'wb') as f:
-            pickle.dump(ml_state.model_end_time, f)
-        
-        with open(get_model_file_path(model_id, MODEL_ENCODER_FILE), 'wb') as f:
-            pickle.dump({
-                'encoder': ml_state.id_encoder,
-                'id_map': ml_state.id_map
-            }, f)
-        
-        # Sauvegarder les données
-        model_data_db_path = get_model_file_path(model_id, MODEL_DATA_DB_FILE)
-        df = get_all_data(model_data_db_path)
-        import sqlite3
-        conn = sqlite3.connect(model_data_db_path)
-        try:
-            df.to_sql(SCHEDULE_TABLE_NAME, conn, if_exists='replace', index=False)
-        finally:
-            conn.close()
-        
-        # Sauvegarder les métadonnées
-        metadata = {
-            'trained_at': datetime.now().isoformat(),
-            'data_row_count': data_row_count,
-            'employee_count': len(ml_state.id_map),
-            'is_trained': ml_state.is_trained
+        # Convertir en dictionnaire
+        return {
+            'session_id': session_record.session_id,
+            'ip_address': session_record.ip_address,
+            'created_at': session_record.created_at.isoformat(),
+            'last_accessed': session_record.last_accessed.isoformat(),
+            'expires_at': session_record.expires_at.isoformat(),
+            'metadata': session_record.session_metadata
         }
-        
-        with open(get_model_file_path(model_id, MODEL_METADATA_FILE), 'w') as f:
-            json.dump(metadata, f, indent=2)
     
-    def load_model(self, session_id: str) -> MLState | None:
+    def delete_session(self, session_id: str) -> bool:
         """
-        Charge un modèle depuis la session dans ml_state.
+        Supprime une session et toutes ses données associées.
         
         Args:
             session_id: ID de la session
         
         Returns:
-            bool: True si le chargement a réussi, False sinon
+            bool: True si supprimé, False si non trouvé
         """
-        if session_id in self._ml_state:
-            return self._ml_state[session_id]
-        session = self.get_session(session_id)
-        if not session:
+        session_record = get_session_record(session_id)
+        
+        if not session_record:
+            return False
+        
+        # Supprimer du cache mémoire
+        if session_id in self._model_cache:
+            del self._model_cache[session_id]
+        
+        # Supprimer le répertoire et tous les fichiers
+        delete_session_directory(session_id)
+        
+        # Log de sécurité
+        create_security_log(
+            ip_address=session_record.ip_address,
+            event_type=SecurityEventType.SESSION_DELETED,
+            session_id=session_id,
+            severity=LogSeverity.INFO
+        )
+        
+        # Supprimer l'enregistrement de la base de données
+        delete_session_record(session_id)
+        
+        return True
+    
+    def save_model(
+        self, 
+        session_id: str, 
+        model_state: ModelState
+    ):
+        """
+        Sauvegarde un ModelState dans la session.
+        
+        Args:
+            session_id: ID de la session
+            model_state: État du modèle à sauvegarder
+        """
+        if not session_exists(session_id):
+            raise ValueError(ErrorMessages.SESSION_NOT_FOUND)
+        
+        # Sauvegarder les modèles
+        with open(get_session_model_arrival_path(session_id), 'wb') as f:
+            pickle.dump(model_state.model_start_time, f)
+        
+        with open(get_session_model_departure_path(session_id), 'wb') as f:
+            pickle.dump(model_state.model_end_time, f)
+        
+        with open(get_session_encoder_path(session_id), 'wb') as f:
+            pickle.dump({
+                'encoder': model_state.id_encoder,
+                'id_map': model_state.id_map
+            }, f)
+        
+        # Sauvegarder les métadonnées
+        metadata = model_state.to_dict()
+        
+        with open(get_session_metadata_path(session_id), 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        # Mettre en cache
+        self._model_cache[session_id] = model_state
+        
+        # Log de sécurité
+        session_record = get_session_record(session_id)
+        if session_record:
+            create_security_log(
+                ip_address=session_record.ip_address,
+                event_type=SecurityEventType.MODEL_TRAINED,
+                session_id=session_id,
+                event_data=json.dumps({
+                    'entity_count': model_state.entity_count,
+                    'data_row_count': model_state.data_row_count
+                }),
+                severity=LogSeverity.INFO
+            )
+    
+    def load_model(self, session_id: str) -> Optional[ModelState]:
+        """
+        Charge un ModelState depuis la session.
+        Utilise le cache pour éviter les rechargements fréquents.
+        
+        Args:
+            session_id: ID de la session
+        
+        Returns:
+            ModelState ou None si non trouvé
+        """
+        # Vérifier le cache d'abord
+        if session_id in self._model_cache:
+            return self._model_cache[session_id]
+        
+        # Vérifier que la session existe
+        if not session_exists(session_id):
             return None
         
-        model_id = session["model_id"]
-        
-        # Vérifier que le modèle existe
-        metadata_file = get_model_file_path(model_id, MODEL_METADATA_FILE)
-        if not metadata_file.exists():
+        # Vérifier que les fichiers de modèle existent
+        metadata_path = get_session_metadata_path(session_id)
+        if not metadata_path.exists():
             return None
-
-        ml_state = MLState()
+        
         try:
+            # Créer un nouvel état
+            model_state = ModelState()
+            
             # Charger les modèles
-            with open(get_model_file_path(model_id, MODEL_ARRIVAL_FILE), 'rb') as f:
-                ml_state.model_start_time = pickle.load(f)
+            with open(get_session_model_arrival_path(session_id), 'rb') as f:
+                model_state.model_start_time = pickle.load(f)
             
-            with open(get_model_file_path(model_id, MODEL_DEPARTURE_FILE), 'rb') as f:
-                ml_state.model_end_time = pickle.load(f)
+            with open(get_session_model_departure_path(session_id), 'rb') as f:
+                model_state.model_end_time = pickle.load(f)
             
-            with open(get_model_file_path(model_id, MODEL_ENCODER_FILE), 'rb') as f:
+            with open(get_session_encoder_path(session_id), 'rb') as f:
                 encoder_data = pickle.load(f)
-                ml_state.id_encoder = encoder_data['encoder']
-                ml_state.id_map = encoder_data['id_map']
+                model_state.id_encoder = encoder_data['encoder']
+                model_state.id_map = encoder_data['id_map']
             
-            ml_state.is_trained = True
-
-            self._ml_state[session_id] = ml_state
-            return ml_state
+            # Charger les métadonnées
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+                model_state.is_trained = metadata.get('is_trained', False)
+                model_state.trained_at = metadata.get('trained_at')
+                model_state.data_row_count = metadata.get('data_row_count', 0)
+                model_state.entity_count = metadata.get('entity_count', 0)
             
+            # Mettre en cache
+            self._model_cache[session_id] = model_state
+            
+            return model_state
+        
         except Exception as e:
             print(f"Erreur lors du chargement du modèle: {e}")
             return None
     
-    def cleanup_expired_sessions(self):
-        """Nettoie les sessions expirées."""
-        conn = sqlite3.connect(SESSIONS_DB_PATH)
-        try:
-            cursor = conn.execute("""
-                SELECT session_id FROM sessions
-                WHERE expires_at < ?
-            """, (datetime.now().isoformat(),))
-            
-            expired_sessions = [row[0] for row in cursor.fetchall()]
-            
-            for session_id in expired_sessions:
-                self.delete_session(session_id)
-                
-        finally:
-            conn.close()
-    
-    def get_user_sessions(self, ip_address: str) -> list:
-        """Récupère toutes les sessions actives d'une IP."""
-        conn = sqlite3.connect(SESSIONS_DB_PATH)
-        try:
-            cursor = conn.execute("""
-                SELECT session_id, model_id, created_at, last_accessed, expires_at
-                FROM sessions
-                WHERE ip_address = ? AND expires_at > ?
-                ORDER BY last_accessed DESC
-            """, (ip_address, datetime.now().isoformat()))
-            
-            sessions = []
-            for row in cursor.fetchall():
-                sessions.append({
-                    "session_id": row[0],
-                    "model_id": row[1],
-                    "created_at": row[2],
-                    "last_accessed": row[3],
-                    "expires_at": row[4]
-                })
-            
-            return sessions
-            
-        finally:
-            conn.close()
-    
-    def _generate_session_id(self) -> str:
-        """Génère un ID de session sécurisé."""
-        # Utiliser secrets pour la cryptographie
-        random_bytes = secrets.token_bytes(32)
-        timestamp = str(datetime.now().timestamp()).encode()
+    def cleanup_expired_sessions(self) -> int:
+        """
+        Nettoie toutes les sessions expirées.
         
-        # Créer un hash SHA256
-        hash_obj = hashlib.sha256(random_bytes + timestamp)
-        return hash_obj.hexdigest()
+        Returns:
+            Nombre de sessions supprimées
+        """
+        from work_time_prediction.core.database import get_main_engine, get_db_session
+        from work_time_prediction.models.database import Session
+        
+        engine = get_main_engine()
+        db_session = get_db_session(engine)
+        
+        try:
+            # Trouver toutes les sessions expirées
+            expired = db_session.query(Session).filter(
+                Session.expires_at <= datetime.utcnow()
+            ).all()
+            
+            count = 0
+            for session_record in expired:
+                if self.delete_session(session_record.session_id):
+                    count += 1
+            
+            return count
+        
+        finally:
+            db_session.close()
     
-    def _generate_model_id(self) -> str:
-        """Génère un ID unique pour un modèle."""
-        return secrets.token_hex(16)
+    def clear_cache(self):
+        """Vide complètement le cache de modèles."""
+        self._model_cache.clear()
+    
+    def get_cache_info(self) -> Dict[str, Any]:
+        """Retourne des infos sur le cache de modèles."""
+        return {
+            'cache_size': len(self._model_cache),
+            'max_cache_size': MAX_MODELS_IN_CACHE,
+            'cached_sessions': list(self._model_cache.keys())
+        }
 
 
-# Instance globale
+# Instance globale (mais qui gère des états isolés par session !)
 session_manager = SessionManager()

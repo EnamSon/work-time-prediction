@@ -4,8 +4,8 @@
 from fastapi import APIRouter
 
 from work_time_prediction.api.train_models import router as train_router
-from work_time_prediction.api.predict import router as predict_router
 from work_time_prediction.api.session import router as session_router
+from work_time_prediction.api.predict import router as predict_router
 
 # Création du routeur principal
 router = APIRouter()

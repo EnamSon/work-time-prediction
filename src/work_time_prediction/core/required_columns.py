@@ -1,6 +1,7 @@
 # Configuration globale des colonnes
 from __future__ import annotations
 from copy import copy
+
 class RequiredColumnsMapping:
     def __init__(
             self, id_column: str, date_column: str, start_time_column: str, end_time_column: str

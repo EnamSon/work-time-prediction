@@ -3,22 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from work_time_prediction.api import router
 from work_time_prediction.core.utils.folder_manager import ensure_directories_exist
 
-# Initialisation du répertoire de travail
-ensure_directories_exist()
 
 # Initialisation de l'application FastAPI
 app = FastAPI(
     title="Work Time Prediction API",
     description="API de prédiction des intervalles horaires de travail avec système de sessions."
 )
-
-# Configuration CORS pour le développement
-origins = [
-    "http://localhost:5173",  # Frontend React (Vite)
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    "*" # À restreindre en production
-]
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,5 +62,3 @@ def run():
 if __name__ == "__main__":
     run()
 
-# Note: Pour lancer l'application avec Poetry, utilisez:
-# uvicorn work_time_prediction.main:app --reload --app-dir src

@@ -52,7 +52,7 @@ You can specify another host IP or another port with optional arguments `--host`
 - GET /api/session/info: Get session informations
 
     ```bash
-    curl "http://localhost:8000/api/session/info/" \
+    curl "http://127.0.0.1:8000/api/session/info/" \
     -H "accept: application/json" \
     -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672"
     ```
@@ -60,13 +60,13 @@ You can specify another host IP or another port with optional arguments `--host`
 - GET /api/session/list/: List all active sessions of user based on IP address
 
     ```bash
-    curl  "http://localhost:8000/api/session/list/"
+    curl  "http://127.0.0.1:8000/api/session/list/"
     ```
 
 - DELETE /api/session/delete/
 
     ```bash
-    curl "http://localhost:8000/api/session/delete/" \
+    curl "http://127.0.0.1:8000/api/session/delete/" \
     -H "X-Session-ID: 188f9fe92fc4fdbd3bcde0e882860bc38af48f6d0f07016f86fdef8d7ff8c672"
     ```
 
@@ -95,14 +95,13 @@ You can specify another host IP or another port with optional arguments `--host`
 
 ## Docs
 
-Read documentation at http://127.0.0.1:8000/docs
+Read documentation at http://127.0.0.1:8000/docs and http://127.0.0.1:8000/redoc
 
 ---
 
 ## TODO
 
-- migrate to SQLAlchemy
-- add security manager
+- improve security manager
 - improve predictions
 - add summarize dataset api
 - make tests
