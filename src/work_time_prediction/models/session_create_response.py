@@ -1,3 +1,5 @@
+# src/work_time_prediction/models/session_create_response
+
 from pydantic import BaseModel
 
 class SessionCreateResponse(BaseModel):

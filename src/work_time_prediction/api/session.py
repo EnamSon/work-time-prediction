@@ -1,13 +1,13 @@
 # src/work_time_prediction/api/session.py
 # Routes API pour la gestion des sessions
 
-from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi import APIRouter, HTTPException, Request, Header, Depends
 
 from work_time_prediction.core.session_manager import session_manager
 from work_time_prediction.core.constants import SuccessMessages, ErrorMessages
 from work_time_prediction.models.session_create_response import SessionCreateResponse
 from work_time_prediction.models.session_info_response import SessionInfoResponse
-
+from work_time_prediction.core.security.admin_auth import verify_admin_token
 router = APIRouter(prefix="/session")
 
 
@@ -97,10 +97,11 @@ async def delete_session(session_id: str = Header(..., alias="X-Session-ID")):
     return {"message": SuccessMessages.SESSION_DELETED}
 
 
-@router.post("/cleanup")
+@router.post("/cleanup", dependencies=[Depends(verify_admin_token)])
 async def cleanup_expired():
     """
     Nettoie toutes les sessions expirées (endpoint admin).
+    Nécessite un token admin dans le header X-Admin-Token.
     
     Returns:
         dict: Nombre de sessions supprimées
@@ -116,10 +117,11 @@ async def cleanup_expired():
         raise HTTPException(status_code=500, detail=f"Erreur lors du nettoyage: {str(e)}")
 
 
-@router.get("/cache-info")
+@router.get("/cache-info", dependencies=[Depends(verify_admin_token)])
 async def get_cache_info():
     """
     Récupère les informations sur le cache de modèles en mémoire.
+    Nécessite un token admin dans le header X-Admin-Token.
     
     Returns:
         dict: Informations du cache
@@ -127,11 +129,12 @@ async def get_cache_info():
     return session_manager.get_cache_info()
 
 
-@router.post("/cache-clear")
+@router.post("/cache-clear", dependencies=[Depends(verify_admin_token)])
 async def clear_cache():
     """
     Vide le cache de modèles en mémoire (endpoint admin).
     Force le rechargement depuis le disque au prochain accès.
+    Nécessite un token admin dans le header X-Admin-Token.
     
     Returns:
         dict: Message de confirmation

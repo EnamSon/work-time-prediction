@@ -2,6 +2,74 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from work_time_prediction.api import router
 from work_time_prediction.core.utils.folder_manager import ensure_directories_exist
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from work_time_prediction.core.session_manager import session_manager
+from work_time_prediction.core.constants import CLEANUP_CONFIG
+from work_time_prediction.core.utils.logging_config import get_logger
+
+logger = get_logger()
+
+# Scheduler pour le nettoyage automatique des sessions expirées
+scheduler = AsyncIOScheduler()
+
+
+def cleanup_expired_sessions_job():
+    """Tâche planifiée pour nettoyer les sessions expirées."""
+    try:
+        count = session_manager.cleanup_expired_sessions()
+        logger.info(f"Nettoyage automatique: {count} sessions expirées supprimées")
+    except Exception as e:
+        logger.error(f"Erreur lors du nettoyage des sessions: {e}", exc_info=True)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gère le cycle de vie de l'application."""
+    # Démarrage
+    logger.info("=" * 70)
+    logger.info("Démarrage de l'application Work Time Prediction")
+    logger.info("=" * 70)
+    
+    # Afficher le token admin
+    from work_time_prediction.core.security.admin_auth import admin_auth
+    admin_token = admin_auth.get_token()
+    
+    logger.info("🔐 Configuration Admin")
+    if admin_auth.is_dev_mode():
+        logger.warning("⚠️  Mode: DÉVELOPPEMENT (token éphémère)")
+        logger.warning(f"Token admin: {admin_token}")
+        logger.warning("⚠️  Ce token change à chaque redémarrage !")
+        logger.warning("Pour la production: export ADMIN_TOKEN='your-secure-token'")
+    else:
+        logger.info("✅ Mode: PRODUCTION (token depuis variable d'environnement)")
+        logger.info(f"Token admin: {admin_token}")
+    
+    logger.info(f"Usage: Header 'X-Admin-Token: {admin_token}'")
+    logger.info("Endpoints protégés: /cleanup, /cache-info, /cache-clear")
+    
+    # Démarrage du scheduler
+    cleanup_interval_hours = CLEANUP_CONFIG.get("cleanup_interval_hours", 1)
+    scheduler.add_job(
+        cleanup_expired_sessions_job,
+        'interval',
+        hours=cleanup_interval_hours,
+        id='cleanup_sessions'
+    )
+    scheduler.start()
+    logger.info(f"✓ Scheduler démarré: nettoyage toutes les {cleanup_interval_hours}h")
+    
+    logger.info("=" * 70)
+    logger.info("✓ Application démarrée avec succès")
+    logger.info("=" * 70)
+    
+    yield
+    
+    # Arrêt
+    logger.info("Arrêt de l'application...")
+    scheduler.shutdown()
+    logger.info("✓ Scheduler arrêté")
+    logger.info("✓ Application arrêtée proprement")
 
 
 # Initialisation de l'application FastAPI
@@ -20,6 +88,7 @@ app.add_middleware(
 
 # Inclusion du routeur principal contenant les endpoints
 app.include_router(router, prefix="/api")
+logger.info("Routes enregistrées: session, train, predict, columns")
 
 @app.get("/api/")
 @app.get("/api")
@@ -46,6 +115,22 @@ async def root():
     }
 
 
+@app.get("/api/health")
+async def health_check():
+    """Endpoint de santé pour monitoring."""
+    is_healthy = scheduler.running
+    
+    if is_healthy:
+        logger.debug("Health check: OK")
+    else:
+        logger.warning("Health check: Scheduler non actif")
+    
+    return {
+        "status": "healthy" if is_healthy else "degraded",
+        "scheduler_running": is_healthy
+    }
+
+
 def run():
     import argparse
     import uvicorn
@@ -56,6 +141,7 @@ def run():
 
     args = parser.parse_args()
 
+    logger.info("Lancement du serveur uvicorn...")
     uvicorn.run(app, host=args.host, port=args.port)
 
 
