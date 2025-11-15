@@ -86,12 +86,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Middleware de quotas
+from work_time_prediction.api.middleware.quota_middleware import QuotaMiddleware
+app.add_middleware(QuotaMiddleware)
+
+logger.info("Middlewares ajoutés: CORS, Quotas")
+
+
 # Inclusion du routeur principal contenant les endpoints
 app.include_router(router, prefix="/api")
-logger.info("Routes enregistrées: session, train, predict, columns")
+logger.info("Routes enregistrées: session, train_models, predict")
 
 @app.get("/api/")
-@app.get("/api")
 async def root():
     """Endpoint de vérification de l'état de l'API."""
     return {

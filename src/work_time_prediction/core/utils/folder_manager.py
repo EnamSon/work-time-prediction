@@ -207,11 +207,3 @@ def cleanup_orphaned_directories():
                 deleted_count += 1
     
     return deleted_count
-
-# ============================================================================
-# INITIALISATION AU CHARGEMENT DU MODULE
-# ============================================================================
-
-# Créer les répertoires au chargement si nécessaire
-# (Optionnel - peut être fait explicitement dans main.py)
-# ensure_directories_exist()

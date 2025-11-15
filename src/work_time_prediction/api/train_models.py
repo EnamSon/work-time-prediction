@@ -1,7 +1,7 @@
 # src/work_time_prediction/api/train_models.py
 # Route d'entraînement du modèle avec gestion de session
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Header, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Header, Form, Request
 import io
 
 from work_time_prediction.core.database import load_data_from_csv, save_data_to_db, create_security_log
@@ -9,17 +9,21 @@ from work_time_prediction.core.train_models import train_models
 from work_time_prediction.core.required_columns import RequiredColumnsMapping
 from work_time_prediction.core.exceptions import InvalidCsvFormatError, NoDataFoundError
 from work_time_prediction.core.session_manager import session_manager
+from work_time_prediction.core.quota_manager import quota_manager
+from work_time_prediction.core.utils.logging_config import get_logger
 from work_time_prediction.core.constants import (
     DEFAULT_COLUMN_NAMES, SecurityEventType, LogSeverity, 
     ErrorMessages, SuccessMessages
 )
 
 
+logger = get_logger()
 router = APIRouter()
 
 
 @router.post("/train_models/")
 async def train_model(
+    request: Request,
     file: UploadFile = File(..., description="Fichier CSV contenant les données d'entraînement"),
     session_id: str = Header(..., alias="X-Session-ID", description="ID de session"),
     id_column: str = Form(DEFAULT_COLUMN_NAMES["id"], description="Nom de la colonne ID"),
@@ -32,6 +36,7 @@ async def train_model(
     Le mapping des colonnes est utilisé uniquement pour transformer le CSV.
     
     Args:
+        Request: Requête HTTP
         file: Fichier CSV contenant les données d'entraînement
         session_id: ID de session (header X-Session-ID)
         id_column: Nom de la colonne ID dans le CSV
@@ -42,6 +47,29 @@ async def train_model(
     Returns:
         dict: Résultat de l'entraînement avec statistiques
     """
+    client_ip = request.client.host if request.client else "unknown"
+    
+    # Vérifier le quota d'entraînement spécifique
+    if not quota_manager.check_rate_limit(client_ip, 'train'):
+        logger.warning(f"Quota d'entraînement dépassé pour {client_ip}")
+        raise HTTPException(status_code=429, detail="Quota d'entraînement dépassé")
+    
+    # Vérifier la taille du fichier
+    contents = await file.read()
+    file_size_mb = len(contents) / (1024 * 1024)
+    
+    if file_size_mb > quota_manager.quotas_config['max_file_size_mb']:
+        raise HTTPException(status_code=413, detail=f"Fichier trop volumineux (max: {quota_manager.quotas_config['max_file_size_mb']} MB)")
+    
+    # Vérifier le quota de stockage (estimation)
+    if not quota_manager.check_storage_quota(client_ip, file_size_mb * 3):  # Estimation: CSV * 3 pour modèles
+        raise HTTPException(status_code=507, detail="Quota de stockage dépassé")
+    
+    # Valider la session
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=ErrorMessages.SESSION_INVALID)
+
     # Valider la session
     session = session_manager.get_session(session_id)
     if not session:
@@ -53,7 +81,6 @@ async def train_model(
     
     try:
         # Lire le contenu du fichier
-        contents = await file.read()
         csv_data = io.StringIO(contents.decode('utf-8'))
         
         # Créer le mapping de colonnes (utilisé uniquement pour la transformation)
